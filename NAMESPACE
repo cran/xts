@@ -1,29 +1,83 @@
-#exportPattern("^[[:alpha:]]+")
-importFrom(zoo,coredata)
-S3method(coredata,xts)
+# load fortran symbol table
+useDynLib(xts)
 
+# user visible core xts functions
 export(xts)
 export(as.xts)
 export(is.xts)
 export(reclass)
-S3method(as.xts,ts)
+export(endpoints)
+export(CLASS)
+export('CLASS<-')
+export(indexClass)
+export('indexClass<-')
+export(to.period,
+       to.minutes,
+       to.minutes3,
+       to.minutes5,
+       to.minutes10,
+       to.minutes15,
+       to.minutes30,
+       to.hourly,
+       to.daily,
+       to.weekly,
+       to.monthly,
+       to.quarterly,
+       to.yearly)
+export(xtsAttributes)
+export('xtsAttributes<-')
+export(periodicity)
+export(period.apply)
+export(first,
+       last)
+export(apply.daily,
+       apply.weekly,
+       apply.monthly,
+       apply.quarterly,
+       apply.yearly)
+S3method(first,default)
+S3method(last,default)
+S3method(first,zoo)
+S3method(last,zoo)
+
+# xts methods
+importFrom(zoo,coredata)
+S3method(coredata,xts)
 S3method(as.xts,xts)
-S3method(as.xts,zoo)
-S3method(as.xts,data.frame)
-S3method(as.xts,matrix)
-S3method(as.xts,timeSeries)
-S3method(as.xts,its)
 S3method('[',xts)
+S3method(str,xts)
 S3method(print,xts)
+S3method(print,CLASS)
+S3method('CLASS<-',xts)
+S3method('indexClass<-',xts)
+S3method('xtsAttributes<-',xts)
 
-#export(endpoints,startof,endof)
+# ts specific methods
+S3method(as.xts,ts)
 
-#export(tindex)
-#S3method(tindex,default)
-#S3method(tindex,its)
-#S3method(tindex,ts)
-#S3method(tindex,timeSeries)
+# zoo specific methods
+importFrom(zoo,as.zoo)
+S3method(as.xts,zoo)
+S3method(as.zoo,xts)
 
-#export(timeformat)
-#S3method(Ops,timeformat)
-#S3method(print,timeformat)
+# data.frame specific methods
+S3method(as.xts,data.frame)
+
+# matrix specific methods
+S3method(as.xts,matrix)
+
+# timeSeries (package:fSeries) specific methods
+#export(xts.as.timeSeries)
+S3method(as.xts,timeSeries)
+
+# its (package:its) specific methods
+#export(xts.as.its)
+S3method(as.xts,its)
+
+# irts (package:tseries) specific methods
+S3method(as.xts,irts)
+
+
+## currently unexported functions that _may_ be exported at some point
+
+#export(startof,endof,firstof,lastof)

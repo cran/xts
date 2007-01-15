@@ -12,12 +12,12 @@ like zoo.
 \tabular{ll}{
 Package: \tab xts\cr
 Type: \tab Package\cr
-Version: \tab 0.0-3\cr
-Date: \tab 2008-01-03\cr
+Version: \tab 0.0-6\cr
+Date: \tab 2008-01-15\cr
 License: \tab GPL-3\cr
 }
 Easily convert one of \R's many time-series (and non-time-series)
-classes to a true time based object which inherits all of zoo's
+classes to a true time-based object which inherits all of zoo's
 methods, while allowing for new time-based tools where appropriate.
 
 Additionally, one may use \pkg{xts} to create new objects which

@@ -1,70 +1,82 @@
 **********************************************************************************
 **********************************************************************************
 ** 
-**  WISHLIST: 2008-01-02 for xts
+**  WISHLIST: 2008-01-13 for xts
 **
 **********************************************************************************
 **********************************************************************************
 
-* Write more test cases to better 'test' the functions
-
-* Add subsetting by 'time'.  Partial implementation exists in [.xts, but
-  very untested and not fully developed yet.
-
-  *** some sort of range operator :: (partially implemented)
-      ideally behaves like python:
-        '2007::2008' #all of 2007 and 2008 in data set
-        '::2008'     #all data from beginning up to 2008
-        '2007::'     #data from 2007 to end of data set
-
-  *** add the ability to short specify dates - e.g. 
-      '1997-01' should be interpreted as all obs. within the
-       month of January 1997
-
-  *** similarly (same solution as above??) add the ability
-      to subset HF data by day without requiring higher
-      resolution specification or ranges
+* Write more test cases to better 'test' the functions, specifically tests
+  to check on xts class persistence
 
 
-* Add time() and time<- method for xts - to extract the index
+* time<- method for xts - alias for index<-
+
+
+* index<- method to check for time-date requirement
 
 
 * [.xts<- replacement method
 
 
-* possibly cbind/rbind changes if required to maintain xts object
+* cbind/rbind xts methods required to maintain xts object
 
 
 * aggregate.xts (dispatch to NextMethod or call aggregate.zoo and
   re 'xts' results
 
  
-* diff.xts method
-
-
-* index<- method to check for time-date requirement
-
-
-* add irts methods (irts is in tseries)
+* diff.xts method  [not needed: jar]
 
 
 * as.data.frame.xts, as.matrix.xts
-  as.zoo.xts, as.ts.xts, as.its.xts,
+  as.zoo.xts, as.its.xts,
   as.timeSeries.xts, as.irts.xts
 
+  above should handle clean coercion to the requested classes,
+  so that it would be possible to do the following:
+    x # a timeSeries object
+    identical(as.timeSeries(as.xts(x)),x)
 
-* as.POSIXct.xts, as.Date.xts, as.POSIXlt.xts, as.timeDate.xts
-  as.yearmon.xts, as.yearqtr.xts
+     -- or --
 
+    as.ts(as.xts(x))
 
-* look into chron, dates, and timeDate for indexing options
+  possibly rely on zoo methods instead, though may be able to do better in
+  certain cases. timeSeries may be the tough one - as it has unique attributes
+  automatically generated, that *should* just be copied.
 
+  'as.ts' is a bad idea to rewrite.  The current method works great
+  (as.ts.default or as.ts.zoo???)
+
+  The most compelling reason is to allow for temporary conversion
+  to class type required by particular functions - esp. functions
+  in PerformanceAnalytics and the Rmetrics bundle, though a reliable
+  coversion to 'ts' for many base functions would be also useful
+
+  essentially a mechanism to allow for the same conversion as.* is
+  used for elsewhere.
+
+* indexClass and indexClass<- methods allow for changing index class,
+  at present only simple conversions work, as no additional args
+  are passed to as.POSIXct,etc methods.  Need to fix this.
+
+  Additionally indexing to different formats needs to be done:
+
+      as.yearmon.xts, as.yearqtr.xts
+
+* per suggestions from Brian Peterson automatically
+  handle mon/qtr as yearmon and yearqtr 
+  
+* look into chron, dates (& yearmon, yearqtr)
+  -- this can't be extensible, as we couldn't test for time nature...
+  -- but we *should* cover all *known* date handling in R at any given time
 
 * create a matrix of time-series types and attributes for comparison
   documentation
 
+* write an introductory vignette for 'xts', possibly an article for R news
 
-* write an introductory vignette for 'xts'
-
+* web page on R-Forge
 
 * a generic extension function ?extend.xts?
