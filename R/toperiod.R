@@ -21,7 +21,8 @@ function(x,period='months',k=1,indexAt=NULL,name=NULL,...)
     x <- as.xts(x)
     RECLASS <- TRUE
   } else RECLASS <- FALSE
-  
+
+  original.indexClass <- indexClass(x)
   
   if(any(is.na(x))) {
     x <- na.omit(x)  # can't calculate aggregation with NA values  ??? any suggestions
@@ -79,12 +80,26 @@ function(x,period='months',k=1,indexAt=NULL,name=NULL,...)
   # allow for nice and user specifiable formatting of dates - per Brian Peterson
   if(!is.null(indexAt)) {
     if(indexAt %in% c('yearmon','yearqtr')) {
-      if(CLASS(x) %in% c('ts','its','timeSeries')) {
+
+      if('timeDate' %in% indexClass(x)) {
+        # timeDate needs to be converted to an object of class POSIXct
+        # to convert to yearmon/yearqtr correctly.  This is only useful
+        # for objects that _can_ have yearmon/yearqtr as an index - 
+        # not for 'ts', 'its' or 'timeSeries' 
+        indexClass(x) <- "Date"
+      }
+
+      if(RECLASS && !is.null(CLASS(x)) && CLASS(x) %in% c('ts','its','timeSeries')) {
         # timeSeries can't handle either of these time-based indexes,
         # so default to startof rather than ugly <NA>
         # ts causes malloc issues when passed a non-numeric index - BAD!
         indexAt <- 'firstof'
-      } else indexClass(tz) <- as.character(indexAt)
+      } else {
+        # convert to yearmon or yearqtr as requested
+        # and set original to current - to prevent reconversion
+        indexClass(tz) <- as.character(indexAt)
+        original.indexClass <- indexClass(tz)  
+      }
     }
     if(indexAt=='startof') {
       index(tz) <- index(x)[startof(x,by=period)]
@@ -117,6 +132,9 @@ function(x,period='months',k=1,indexAt=NULL,name=NULL,...)
       }
     }
   }
+
+  # reset indexClass back to the class originally passed in
+  indexClass(tz) <- original.indexClass
 
   if(RECLASS) return(reclass(tz))
   tz
@@ -211,7 +229,10 @@ function(x) {
   # function to remove HHMMSS portion of time index
   if(!inherits(x,"its")) {
     x <- as.xts(x)
-    indexClass(x) <- "Date"
-    reclass(x)
+    current.indexClass <- indexClass(x)
+    if(current.indexClass[1] == 'POSIXt')
+      indexClass(x) <- "Date"
+      #reclass(x)
+    x
   } else x
 }

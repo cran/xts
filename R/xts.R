@@ -11,29 +11,42 @@
 
 `xts` <-
 function(x,order.by=index(x),frequency=NULL,...) {
-  if(!inherits(order.by,'Date') 
-     & !inherits(order.by,'POSIXct')
-     & !inherits(order.by,'timeDate')
-     & !inherits(order.by,'yearmon') & !inherits(order.by,'yearqtr'))
-  {
-    #if(length(order.by)==1) { # a number indicating the column, or column name
-      #order.by <- x[,order.by]
-    #}
-    #order.by <- do.call(paste('as',indexClass,sep='.'),list(order.by,...))
-    stop("order.by requires a time-based object of class POSIXct or Date")
+  if(!any(sapply(c('Date','POSIXct','chron','dates','times','timeDate','yearmon','yearqtr'),
+     function(xx) inherits(order.by,xx)))) {
+    stop("order.by requires an appropriate time-based object")
   }
-
-  z <- zoo(x=x,order.by=order.by,frequency=frequency)
-#  rownames(z) <- as.character(as.POSIXct(order.by))
-  z <- structure(z,class=c('xts','zoo'),...)
-
+    orderBy <- class(order.by)
+    if('timeDate' %in% orderBy) {
+      z <- structure(zoo(x=coredata(x),
+                     order.by=as.POSIXct(order.by),
+                     frequency=frequency),
+                     class=c('xts','zoo'),...)
+      indexClass(z) <- 'timeDate'
+    } else {
+      z <- structure(zoo(x=x,
+                     order.by=order.by,
+                     frequency=frequency),
+                     class=c('xts','zoo'),...)
+    }
+#  z <- zoo(x=x, order.by=order.by, frequency=frequency)
+#  z <- structure(z,class=c('xts','zoo'),...)
+  if(!is.null(dim(x))) {
+    attr(z,'.ROWNAMES') <- dimnames(z)[[1]]
+    rownames(z) <- as.character(index(z))
+  }
   return(z)
 }
 
 `reclass` <-
 function(x) {
   old.class <- CLASS(x)
-  if(!is.null(old.class)) {
+  if(length(old.class) > 0) {
+    if(!is.null(dim(x))) {
+      if(!is.null(attr(x,'.ROWNAMES'))) {
+        rownames(x) <- attr(x,'.ROWNAMES')[1:NROW(x)]
+      } else rownames(x) <- NULL
+    }
+    attr(x,'.ROWNAMES') <- NULL
     do.call(paste('re',old.class,sep='.'),list(x))
   } else x
 }
@@ -41,7 +54,11 @@ function(x) {
 `CLASS` <-
 function(x) {
   cl <- attr(x,'.CLASS')
-  return(structure(cl,class='CLASS'))
+
+  if(!is.null(cl))
+    return(structure(cl,class='CLASS'))
+
+  return(NULL)
 }
 
 `print.CLASS` <-

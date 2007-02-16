@@ -1,19 +1,64 @@
 **********************************************************************************
 **********************************************************************************
 ** 
-**  WISHLIST: 2008-01-13 for xts
+**  WISHLIST: 2008-02-16 for xts
 **
 **********************************************************************************
 **********************************************************************************
 
+
+* plot.xts method - handle x-index values as dates similar to ticks in quantmod
+    follow 'zoo' convention mostly - e.g.
+
+      plot(x, y = NULL, screens, plot.type,
+             panel = lines, xlab = "Index", ylab = NULL, main = NULL,
+             xlim = NULL, ylim = NULL, xy.labels = FALSE, xy.lines = NULL,
+             oma = c(6, 0, 5, 0), mar = c(0, 5.1, 0, 2.1), 
+             col = 1, lty = 1, pch = 1, type = "l", nc, widths = 1, heights = 1, ...)
+
+      ## S3 method for class 'zoo':
+      lines(x, y = NULL, type = "l", ...)
+
+      ## S3 method for class 'zoo':
+      points(x, y = NULL, type = "p", ...)
+  
+  AND allow for full plot/par customization - mostly focus on timeseries data ...
+  [update 2/16/2008: partially added, still needs work, but working -jar]
+      
+
+* write 'as.ts.xts' method: handle NAs correctly
+
+
+* 'Ops.xts' method
+
+
+* An xtsAlign method to align series by date. - match monthly data to first/last...
+
+
+* merge.xts
+
+
+* indexClass and index<- should warn if non-unique index values are applied
+
+
+* add zooreg as a handled class, possibly mts if necessary
+
+
 * Write more test cases to better 'test' the functions, specifically tests
   to check on xts class persistence
+  Tests to incorporate:
+  
+    for all data classes: 'zoo','ts','timeSeries','its','irts','matrix','data.frame'
+      as.xts
+      reclass
+    
+    indexClass<- for 'Date','timeDate','POSIXct','chron','dates','yearmon','yearqtr'
+    indexClass<- change then  =>  reclass
 
+   *`timeSeries` has internal issues when subsetting.  charvec loses atomic and attributes
+   *`ts` converts to a numeric object if subset by date
 
-* time<- method for xts - alias for index<-
-
-
-* index<- method to check for time-date requirement
+   [update 2/16/2008: most of the above have been implemented]
 
 
 * [.xts<- replacement method
@@ -24,9 +69,6 @@
 
 * aggregate.xts (dispatch to NextMethod or call aggregate.zoo and
   re 'xts' results
-
- 
-* diff.xts method  [not needed: jar]
 
 
 * as.data.frame.xts, as.matrix.xts
@@ -63,19 +105,21 @@
 
   Additionally indexing to different formats needs to be done:
 
-      as.yearmon.xts, as.yearqtr.xts
+      as.yearmon.xts, as.yearqtr.xts,
+      as.timeDate.xts, as.POSIXct.xts,
+      as.chron.xts, as.dates.xts, as.times.xts,
+      as.Date.xts
 
-* per suggestions from Brian Peterson automatically
-  handle mon/qtr as yearmon and yearqtr 
-  
 * look into chron, dates (& yearmon, yearqtr)
   -- this can't be extensible, as we couldn't test for time nature...
   -- but we *should* cover all *known* date handling in R at any given time
+  [done 2/16/2008 - jar]
 
 * create a matrix of time-series types and attributes for comparison
   documentation
 
 * write an introductory vignette for 'xts', possibly an article for R news
+  [in progress 2/16/2008 - jar]
 
 * web page on R-Forge
 

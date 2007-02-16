@@ -1,6 +1,9 @@
 # load fortran symbol table
 useDynLib(xts)
 
+# debugging
+#export(re.zoo,as.xts.zoo)
+
 # user visible core xts functions
 export(xts)
 export(as.xts)
@@ -10,6 +13,7 @@ export(endpoints)
 export(CLASS)
 export('CLASS<-')
 export(indexClass)
+export(convertIndex)
 export('indexClass<-')
 export(to.period,
        to.minutes,
@@ -35,21 +39,29 @@ export(apply.daily,
        apply.monthly,
        apply.quarterly,
        apply.yearly)
+S3method(plot,xts)
 S3method(first,default)
 S3method(last,default)
 S3method(first,zoo)
 S3method(last,zoo)
+S3method(print,periodicity)
 
 # xts methods
 importFrom(zoo,coredata)
+importFrom(zoo,'index<-')
+importFrom(zoo,'time<-')
+importFrom(stats,na.omit)
 S3method(coredata,xts)
 S3method(as.xts,xts)
 S3method('[',xts)
 S3method(str,xts)
+S3method(na.omit,xts)
 S3method(print,xts)
 S3method(print,CLASS)
 S3method('CLASS<-',xts)
 S3method('indexClass<-',xts)
+S3method('index<-',xts)
+S3method('time<-',xts)
 S3method('xtsAttributes<-',xts)
 
 # ts specific methods

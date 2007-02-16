@@ -10,7 +10,7 @@ function(x,...) {
 
 `str.xts` <-
 function(object,...) {
-  cat(paste("An",sQuote('xts'),"object containing:\n"))
+  cat(paste("An",sQuote('xts'),"object from",start(object),"to",end(object),"containing:\n"))
   cat(paste("  Data:"))
   str(coredata(object),...)
   cat(paste("  Indexed by: "))
@@ -21,26 +21,47 @@ function(object,...) {
   str(xtsAttributes(object),...)
 }
 
+`na.omit.xts` <- function(object, ...) {
+  xx <- stats:::na.omit.default(object,...)
+  naa <- attr(xx,'na.action')
+  naa.index <- index(object)[naa]
+
+  ROWNAMES <- attr(object,'.ROWNAMES')
+  if(!is.null(ROWNAMES)) {
+    naa.rownames <- ROWNAMES[naa]
+  } else naa.rownames <- NULL
+
+  attr(xx,'na.action') <- structure(naa,
+                                    index=naa.index,
+                                    .ROWNAMES=naa.rownames)
+  return(xx) 
+}
+
 `[.xts` <-
 function(x, i, j, drop = TRUE, ...) 
 {
     original.indexclass <- indexClass(x)
     original.class <- class(x)
-    original.cols <- ncol(x)
+    original.cols <- NCOL(x)
     original.names <- colnames(x)
+    original.CLASS <- CLASS(x)
+
+    sys.TZ <- Sys.getenv('TZ') 
+    Sys.setenv(TZ='GMT')
+
+
     original.attr <- attributes(x)[!names(attributes(x)) %in% c('dim','dimnames','index','class')]
     if(length(original.attr) < 1) original.attr <- NULL
 
+    #POSIXindex <- tindex(x,'POSIXct')  attempt to remove tindex...
+    indexClass(x) <- "POSIXct"
+    POSIXindex <- index(x)
 
     if (missing(i)) 
-        i <- 1:nrow(x)
+        i <- 1:NROW(x)
     if (is.character(i)) {
       # enables subsetting by date style strings
       # must be able to process - and then allow for operations???
-
-      #POSIXindex <- tindex(x,'POSIXct')  attempt to remove tindex...
-      indexClass(x) <- "POSIXct"
-      POSIXindex <- index(x)
 
       if(!identical(grep("::",i),integer(0))) {
         # range operator
@@ -71,22 +92,57 @@ function(x, i, j, drop = TRUE, ...)
     class(x) <- "zoo"
 
     if (missing(j)) {
-        x <- x[i = i, drop = drop, ...]
+        if(original.cols == 1) {
+          # if data set only has one column:
+          # it is necessary to replace the dimnames removed by [.zoo
+          dn1 <- dimnames(x)[[1]]
+          x <- x[i = i, drop = drop, ...]
+          dim(x) <- c(NROW(x), NCOL(x))
+          dn <- list(dn1[i],colnames(x))
+          dimnames(x) <- dn
+        } else {
+          x <- x[i = i, drop = drop, ...]
+        }
+
         if(!is.null(original.attr)) {
-          for(i in 1:length(original.attr)) {
-            attr(x,names(original.attr)[i]) <- original.attr[[i]]
-          }
+#         if(original.CLASS[1] == 'ts') {
+#           x <- as.zoo(x)
+#           .tsp <- seq(original.attr$tsp[1],original.attr$tsp[2],by=original.attr$tsp[3])[i]
+#           attr(x,'tsp') <- c(first(.tsp), last(.tsp), original.attr$tsp[3])
+#           for(ii in 1:length(original.attr)) {
+#             if(names(original.attr)[ii] != 'tsp') attr(x,names(original.attr)[ii]) <- original.attr[[ii]]
+#           }
+#         } else {
+            for(ii in 1:length(original.attr)) {
+              attr(x,names(original.attr)[ii]) <- original.attr[[ii]]
+#             if(names(original.attr)[ii]=='.tsp') {
+#               # update tsp for `ts` objects
+#               TSP <- original.attr[ii][[1]]
+#               cur.index <- seq(from=TSP[1],to=TSP[2],by=TSP[3])[i]
+#               attr(x,'.tsp') <- c(first(cur.index),last(cur.index),TSP[3])
+#             }
+              if(names(original.attr)[ii]=='.ROWNAMES') attr(x,'.ROWNAMES') <- original.attr[[ii]][i]
+            }
+#         }
         }
         class(x) <- original.class
         if(!is.null(original.cols)) j <- 1:original.cols
     }
     else {
-        x <- x[i = i, j = j, drop = drop, ...]
-        if (is.null(dim(x))) 
-            dim(x) <- c(NROW(x), NCOL(x))
+        if(length(j) == 1) {
+          # subsetting down to 1 cols - '[.zoo' will delete this info
+          dn1 <- dimnames(x)[[1]]
+          x <- x[i = i, j = j, drop = drop, ...]
+          dim(x) <- c(NROW(x), NCOL(x))
+          dn <- list(dn1[i],colnames(x))
+          dimnames(x) <- dn
+        } else {
+          x <- x[i = i, j = j, drop = drop, ...]
+        }
+
         if(!is.null(original.attr)) {
-          for(i in 1:length(original.attr)) {
-            attr(x,names(original.attr)[i]) <- original.attr[[i]]
+          for(ii in 1:length(original.attr)) {
+            attr(x,names(original.attr)[ii]) <- original.attr[[ii]]
           }
         }
         # handle future xts extensions without [. method rewrite
@@ -94,7 +150,12 @@ function(x, i, j, drop = TRUE, ...)
     }
     if (!is.null(dim(x))) 
         colnames(x) <- original.names[j]
+
     indexClass(x) <- original.indexclass
+
+    Sys.setenv(TZ=sys.TZ)
+
+    CLASS(x) <- original.CLASS
     x
 }
 

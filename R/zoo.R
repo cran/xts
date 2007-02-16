@@ -3,10 +3,17 @@
 `re.zoo` <-
 function(x,...) {
   xx <- coredata(x)
-#  rownames(xx) <- attr(x,'zoo.rownames')
-  zoo(xx,
-      order.by=index(x),
-      ...)
+
+  xx <- zoo(xx,
+        order.by=index(x),
+        ...)
+
+  if(length(dimnames(x)[[2]]) < 2) {
+    dimnames(xx) <- NULL
+    dim(xx) <- NULL
+    attr(xx,'names') <- dimnames(x)[[1]]
+  }
+  xx
 }
 
 `as.xts.zoo` <-
@@ -15,8 +22,15 @@ function(x,order.by=index(x),frequency=NULL,...) {
             order.by=order.by,
             frequency=frequency,
             .CLASS='zoo',
-#            zoo.rownames=rownames(x),
             ...)
+
+  if(!is.null(attr(x,'names'))) {
+    dim(xx) <- c(NROW(xx),NCOL(xx))
+    dn <- list(attr(x,'names'),colnames(x))
+    dimnames(xx) <- dn
+    attr(xx,'.ROWNAMES') <- attr(x,'names')
+  }
+
   xx
 }
 
