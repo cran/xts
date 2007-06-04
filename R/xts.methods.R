@@ -67,9 +67,9 @@ function(x, i, j, drop = TRUE, ...)
 
       i.tmp <- NULL
       for(ii in i) {
-        if(!identical(grep("::",ii),integer(0))) {
+        if(!identical(grep("(::)|/",ii),integer(0))) {
           # range operator
-          dates <- strsplit(ii,'::')[[1]]
+          dates <- strsplit(ii,'(::)|/')[[1]]
           
           # test for single side range operation
           first.time <- ifelse(dates[1]=="",
@@ -164,7 +164,7 @@ function(..., deparse.level=1) {
  xts.CLASS <- sapply(args, CLASS)
  xts.CLASSattr <- lapply(args, xtsAttributes, user=FALSE)
  xts.USERattr <- lapply(args, xtsAttributes, user=TRUE)
- has.ROWNAMES <- any( lapply(args, function(x) any(names(attributes(x))=='.ROWNAMES')) )
+ has.ROWNAMES <- any( as.logical(lapply(args, function(x) any(names(attributes(x))=='.ROWNAMES'))) )
 
  # Ensure index attributes match
  # store as POSIXct, convert to class of first object index
@@ -224,7 +224,7 @@ function(..., deparse.level=1) {
  xts.CLASS <- sapply(args, CLASS)
  xts.CLASSattr <- lapply(args, xtsAttributes, user=FALSE)
  xts.USERattr <- lapply(args, xtsAttributes, user=TRUE)
- has.ROWNAMES <- any( lapply(args, function(x) any(names(attributes(x))=='.ROWNAMES')) )
+ has.ROWNAMES <- any( as.logical(sapply(args, function(x) any(names(attributes(x))=='.ROWNAMES'))) )
 
  # Bind objects
  ret <- zoo:::cbind.zoo(...)

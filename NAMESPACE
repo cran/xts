@@ -1,8 +1,15 @@
 # load fortran symbol table
 useDynLib(xts)
 
+# imports
+#importFrom(stats, lag)
+
 # debugging
-#export(re.zoo,as.xts.zoo)
+export(firstof,
+       lastof)
+
+export(timeBased,
+       timeBasedSeq)
 
 # user visible core xts functions
 export(xts)
@@ -11,6 +18,8 @@ export(is.xts)
 export(xcoredata)
 export('xcoredata<-')
 export(xtsible)
+export(use.xts, try.xts)
+export(Reclass, use.reclass)
 export(reclass)
 export(endpoints)
 export(CLASS)
@@ -58,8 +67,12 @@ export(apply.daily,
 #       cbind.xts,
 #       c.xts)
 export(axTicksByTime)
-
 S3method(plot,xts)
+
+export(.lag.xts, .diff.xts)
+
+#S3method(lag,xts)
+#S3method(diff,xts)
 S3method(first,default)
 S3method(last,default)
 S3method(first,zoo)
@@ -115,6 +128,8 @@ S3method(as.xts,its)
 # irts (package:tseries) specific methods
 S3method(as.xts,irts)
 
+# Date specific methods
+S3method(as.xts,Date)
 
 ## currently unexported functions that _may_ be exported at some point
 

@@ -1,0 +1,129 @@
+RUNIT TEST PROTOCOL -- Sat Feb 16 00:33:29 2008 
+*********************************************** 
+Number of test functions: 94 
+Number of errors: 0 
+Number of failures: 0 
+
+ 
+1 Test Suite : 
+xts unit testing - 94 test functions, 0 errors, 0 failures
+
+
+
+Details 
+*************************** 
+Test Suite: xts unit testing 
+Test function regexp: ^test.+ 
+Test file regexp: ^runit.+\.[rR]$ 
+Involved directory: 
+/Users/jryan/Rdir/svntest/rforge/xts/pkg/tests/../inst/unitTests 
+--------------------------- 
+Test file: /Users/jryan/Rdir/svntest/rforge/xts/pkg/tests/../inst/unitTests/runit.data.frame.R 
+test.convert_data.frame_to_xts: ... OK (0.01 seconds)
+test.data.frame_reclass: ... OK (0.01 seconds)
+test.data.frame_reclass_subset_reclass_j1: ... OK (0.01 seconds)
+--------------------------- 
+Test file: /Users/jryan/Rdir/svntest/rforge/xts/pkg/tests/../inst/unitTests/runit.indexClass.R 
+test.convert_Date2Date: ... OK (0 seconds)
+test.convert_Date2POSIXct: ... OK (0 seconds)
+test.convert_Date2chron: ... OK (0.01 seconds)
+test.convert_Date2timeDate: ... OK (0 seconds)
+test.convert_Date2yearmon: ... OK (0 seconds)
+test.convert_Date2yearqtr: ... OK (0 seconds)
+test.convert_POSIXct2Date: ... OK (0 seconds)
+test.convert_POSIXct2POSIXct: ... OK (0 seconds)
+test.convert_POSIXct2chron: ... OK (0.01 seconds)
+test.convert_POSIXct2timeDate: ... OK (0 seconds)
+test.convert_POSIXct2yearmon: ... OK (0 seconds)
+test.convert_POSIXct2yearqtr: ... OK (0 seconds)
+test.convert_chron2Date: ... OK (0 seconds)
+test.convert_chron2POSIXct: ... OK (0 seconds)
+test.convert_chron2chron: ... OK (0.03 seconds)
+test.convert_chron2timeDate: ... OK (0 seconds)
+test.convert_chron2yearmon: ... OK (0 seconds)
+test.convert_chron2yearqtr: ... OK (0 seconds)
+test.convert_timeDate2Date: ... OK (0 seconds)
+test.convert_timeDate2POSIXct: ... OK (0 seconds)
+test.convert_timeDate2chron: ... OK (0.01 seconds)
+test.convert_timeDate2timeDate: ... OK (0 seconds)
+test.convert_timeDate2yearmon: ... OK (0 seconds)
+test.convert_timeDate2yearqtr: ... OK (0 seconds)
+test.convert_yearmon2Date: ... OK (0 seconds)
+test.convert_yearmon2POSIXct: ... OK (0 seconds)
+test.convert_yearmon2chron: ... OK (0.01 seconds)
+test.convert_yearmon2timeDate: ... OK (0 seconds)
+test.convert_yearmon2yearmon: ... OK (0 seconds)
+test.convert_yearmon2yearqtr: ... OK (0 seconds)
+test.convert_yearqtr2Date: ... OK (0 seconds)
+test.convert_yearqtr2POSIXct: ... OK (0 seconds)
+test.convert_yearqtr2chron: ... OK (0.01 seconds)
+test.convert_yearqtr2timeDate: ... OK (0 seconds)
+test.convert_yearqtr2yearmon: ... OK (0 seconds)
+test.convert_yearqtr2yearqtr: ... OK (0 seconds)
+test.indexClass_NULL: ... OK (0 seconds)
+test.indexClass_empty_string: ... OK (0 seconds)
+test.indexClass_full_index: ... OK (0 seconds)
+test.indexClass_missing_object: ... OK (0 seconds)
+test.indexClass_unquoted_symbol: ... OK (0 seconds)
+--------------------------- 
+Test file: /Users/jryan/Rdir/svntest/rforge/xts/pkg/tests/../inst/unitTests/runit.irts.R 
+test.convert_irts_to_xts: ... OK (0 seconds)
+test.convert_irts_to_xts_i1: ... OK (0 seconds)
+test.convert_irts_to_xts_i1j1: ... OK (0 seconds)
+test.convert_irts_to_xts_j1: ... OK (0 seconds)
+test.irts_reclass: ... OK (0.04 seconds)
+test.irts_reclass_subset_as.xts_j1: ... OK (0.01 seconds)
+test.irts_reclass_subset_irts_j1: ... OK (0 seconds)
+test.irts_reclass_subset_reclass_j1: ... OK (0 seconds)
+--------------------------- 
+Test file: /Users/jryan/Rdir/svntest/rforge/xts/pkg/tests/../inst/unitTests/runit.its.R 
+test.convert_its_to_xts: ... OK (0 seconds)
+test.convert_its_to_xts_i1: ... OK (0.01 seconds)
+test.convert_its_to_xts_i1j1: ... OK (0.01 seconds)
+test.convert_its_to_xts_j1: ... OK (0.01 seconds)
+test.its_reclass: ... OK (0.01 seconds)
+test.its_reclass_subset_as.xts_j1: ... OK (0.01 seconds)
+test.its_reclass_subset_its_j1: ... OK (0.01 seconds)
+test.its_reclass_subset_reclass_j1: ... OK (0.01 seconds)
+--------------------------- 
+Test file: /Users/jryan/Rdir/svntest/rforge/xts/pkg/tests/../inst/unitTests/runit.matrix.R 
+test.convert_matrix_to_xts: ... OK (0 seconds)
+test.convert_matrix_to_xts_i1: ... OK (0.01 seconds)
+test.convert_matrix_to_xts_i1j1: ... OK (0.01 seconds)
+test.convert_matrix_to_xts_j1: ... OK (0.01 seconds)
+test.matrix_reclass: ... OK (0 seconds)
+test.matrix_reclass_subset_reclass_j1: ... OK (0 seconds)
+--------------------------- 
+Test file: /Users/jryan/Rdir/svntest/rforge/xts/pkg/tests/../inst/unitTests/runit.timeSeries.R 
+test.convert_timeSeries.univariate_to_xts: ... OK (0 seconds)
+test.convert_timeSeries.univariate_to_xts_i1: ... OK (0.01 seconds)
+test.convert_timeSeries.univariate_to_xts_i1j1: ... OK (0.01 seconds)
+test.convert_timeSeries.univariate_to_xts_j1: ... OK (0.01 seconds)
+test.convert_timeSeries_to_xts: ... OK (0 seconds)
+test.convert_timeSeries_to_xts_i1: ... OK (0.01 seconds)
+test.convert_timeSeries_to_xts_i1j1: ... OK (0.01 seconds)
+test.convert_timeSeries_to_xts_j1: ... OK (0.01 seconds)
+test.timeSeries_reclass: ... OK (0.01 seconds)
+test.timeSeries_reclass_subset_as.xts_j1: ... OK (0.02 seconds)
+test.timeSeries_reclass_subset_reclass_j1: ... OK (0.02 seconds)
+test.timeSeries_reclass_subset_timeSeries_j1: ... OK (0.02 seconds)
+--------------------------- 
+Test file: /Users/jryan/Rdir/svntest/rforge/xts/pkg/tests/../inst/unitTests/runit.ts.R 
+test.convert_ts_to_xts: ... OK (0 seconds)
+test.convert_ts_to_xts_i1: ... OK (0.01 seconds)
+test.convert_ts_to_xts_i1j1: ... OK (0.01 seconds)
+test.convert_ts_to_xts_j1: ... OK (0.01 seconds)
+test.ts_reclass: ... OK (0.01 seconds)
+test.ts_reclass_subset_as.xts_j1: ... OK (0.01 seconds)
+test.ts_reclass_subset_reclass_j1: ... OK (0.01 seconds)
+test.ts_reclass_subset_ts_j1: ... OK (0.01 seconds)
+--------------------------- 
+Test file: /Users/jryan/Rdir/svntest/rforge/xts/pkg/tests/../inst/unitTests/runit.zoo.R 
+test.convert_zoo_to_xts: ... OK (0 seconds)
+test.convert_zoo_to_xts_i1: ... OK (0.01 seconds)
+test.convert_zoo_to_xts_i1j1: ... OK (0.01 seconds)
+test.convert_zoo_to_xts_j1: ... OK (0.01 seconds)
+test.zoo_reclass: ... OK (0 seconds)
+test.zoo_reclass_subset_as.xts_j1: ... OK (0.01 seconds)
+test.zoo_reclass_subset_reclass_j1: ... OK (0 seconds)
+test.zoo_reclass_subset_zoo_j1: ... OK (0 seconds)

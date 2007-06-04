@@ -10,7 +10,7 @@
 #  are also defined below
 
 `xts` <-
-function(x,order.by=index(x),frequency=NULL,...) {
+function(x=NULL,order.by=index(x),frequency=NULL,...) {
   if(!any(sapply(c('Date','POSIXct','chron','dates','times','timeDate','yearmon','yearqtr'),
      function(xx) inherits(order.by,xx)))) {
     stop("order.by requires an appropriate time-based object")
@@ -28,8 +28,6 @@ function(x,order.by=index(x),frequency=NULL,...) {
                      frequency=frequency),
                      class=c('xts','zoo'),...)
     }
-#  z <- zoo(x=x, order.by=order.by, frequency=frequency)
-#  z <- structure(z,class=c('xts','zoo'),...)
   if(!is.null(dim(x))) {
     attr(z,'.ROWNAMES') <- dimnames(z)[[1]]
     rownames(z) <- as.character(index(z))
@@ -38,18 +36,37 @@ function(x,order.by=index(x),frequency=NULL,...) {
 }
 
 `reclass` <-
-function(x) {
-  old.class <- CLASS(x)
-  if(length(old.class) > 0) {
+function(x, match.to, ...) {
+  if(!missing(match.to) && is.xts(match.to)) {
+    if(NROW(x) != length(index(match.to)))
+      stop('incompatible match.to attibutes')
+    if(!is.xts(x)) x <- xts(coredata(x),index(match.to))
+    CLASS(x) <- CLASS(match.to)
+    xtsAttributes(x) <- xtsAttributes(match.to)
+  }
+  oldCLASS <- CLASS(x)
+  # should this be is.null(oldCLASS)?
+  if(length(oldCLASS) > 0 && !inherits(oldClass,'xts')) {  
     if(!is.null(dim(x))) {
       if(!is.null(attr(x,'.ROWNAMES'))) {
         rownames(x) <- attr(x,'.ROWNAMES')[1:NROW(x)]
       } else rownames(x) <- NULL
     }
     attr(x,'.ROWNAMES') <- NULL
-    do.call(paste('re',old.class,sep='.'),list(x))
-  } else x
+    if(is.null(attr(x,'.RECLASS')) || attr(x,'.RECLASS')) {#should it be reclassed?
+      attr(x,'.RECLASS') <- NULL
+      do.call(paste('re',oldCLASS,sep='.'),list(x))
+    } else {
+      attr(x,'.RECLASS') <- NULL
+      x
+    }
+  } else {
+    attr(x,'.RECLASS') <- NULL
+    x
+  }
 }
+
+#`reclass` <- reclass2
 
 `CLASS` <-
 function(x) {
