@@ -37,6 +37,25 @@ function(object,...) {
   return(xx) 
 }
 
+`na.replace` <- function(x) {
+  if(is.null(xtsAttributes(x)$na.action))
+    return(x)
+
+  # Create 'NA' xts object
+  tmp <- xts(matrix(rep(NA,NCOL(x)*NROW(x)), nc=NCOL(x)),
+             attr(xtsAttributes(x)$na.action, 'index'))
+
+  # Ensure xts 'NA' object has *all* the same attributes
+  # as the object 'x'; this is necessary for rbind to
+  # work correctly
+  CLASS(tmp) <- CLASS(x)
+  xtsAttributes(tmp) <- xtsAttributes(x)
+  attr(x,'na.action') <- attr(tmp,'na.action') <- NULL
+  colnames(tmp) <- colnames(x)
+
+  rbind(x,tmp)
+}
+
 `[.xts` <-
 function(x, i, j, drop = TRUE, ...) 
 {
@@ -53,14 +72,19 @@ function(x, i, j, drop = TRUE, ...)
     original.attr <- attributes(x)[!names(attributes(x)) %in% c('dim','dimnames','index','class')]
     if(length(original.attr) < 1) original.attr <- NULL
 
-    #POSIXindex <- tindex(x,'POSIXct')  attempt to remove tindex...
-    indexClass(x) <- "POSIXct"
+    # convert index if not POSIXct or Date already
+    if(!inherits(indexClass(x), 'POSIXct') || !inherits(indexClass(x), "Date"))
+      indexClass(x) <- "POSIXct"
     POSIXindex <- index(x)
 
     if (missing(i)) 
+      # this is horribly wasteful  FIXME
       i <- 1:NROW(x)
+
     if (timeBased(i)) 
+      # this shouldn't happen either, though less important I suspect  FIXME
       i <- as.character(as.POSIXct(i)) 
+
     if (is.character(i)) {
       # enables subsetting by date style strings
       # must be able to process - and then allow for operations???
@@ -159,6 +183,10 @@ function(x, i, j, drop = TRUE, ...)
 function(..., deparse.level=1) {
 
  args <- list(...)
+ # Allow, but remove, NULL objects
+ args <- args[!sapply(args,is.null)]
+ if(length(args)==1)
+   return(args[[1]])
 
  # Store original class attributes
  xts.CLASS <- sapply(args, CLASS)
@@ -215,10 +243,15 @@ function(..., deparse.level=1) {
  return(ret)
 }
 
-`cbind.xts` <-
-function(..., deparse.level=1) {
+`merge.xts` <-
+function(..., all=TRUE, fill=NA, suffixes=NULL, retclass='xts') {
 
  args <- list(...)
+ # Allow, but remove, NULL objects
+ args <- args[!sapply(args,is.null)]
+ if(length(args)==1)
+   return(args[[1]])
+ #retclass <- match.arg(retclass, retclass)
 
  # Store original class attributes
  xts.CLASS <- sapply(args, CLASS)
@@ -226,8 +259,8 @@ function(..., deparse.level=1) {
  xts.USERattr <- lapply(args, xtsAttributes, user=TRUE)
  has.ROWNAMES <- any( as.logical(sapply(args, function(x) any(names(attributes(x))=='.ROWNAMES'))) )
 
- # Bind objects
- ret <- zoo:::cbind.zoo(...)
+ # Merge objects
+ ret <- zoo:::merge.zoo(..., all=all, fill=fill, suffixes=suffixes, retclass='zoo')
  ret <- structure( ret, class=c('xts','zoo') )
 
  # Drop CLASS & USER attributes if they are not the same for all objects
@@ -263,6 +296,11 @@ function(..., deparse.level=1) {
  rownames(ret) <- as.character(index(ret))
 
  return(ret)
+}
+
+`cbind.xts` <-
+function(..., all=TRUE, fill=NA, suffixes=NULL) {
+    xts:::merge.xts(..., all=all, fill=fill, suffixes=suffixes, retclass="xts")
 }
 
 `c.xts` <-
