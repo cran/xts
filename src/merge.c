@@ -40,7 +40,8 @@
 
 */
 /* do_merge_xts {{{ */
-SEXP do_merge_xts (SEXP x, SEXP y, SEXP all, SEXP fill, SEXP retclass, SEXP colnames, SEXP suffixes, SEXP retside, SEXP env)
+SEXP do_merge_xts (SEXP x, SEXP y, SEXP all, SEXP fill, SEXP retclass, SEXP colnames, SEXP suffixes, SEXP retside, SEXP env,
+                   int coerce)
 {
   int nrx, ncx, nry, ncy, len;
   int left_join, right_join;
@@ -63,6 +64,9 @@ SEXP do_merge_xts (SEXP x, SEXP y, SEXP all, SEXP fill, SEXP retclass, SEXP coln
     So we need to check that the objects are not NULL, or at least
     treat NULL objects as zero-width with an index that matches the non-null
    
+    2009/01/07: calling merge(NA,x) or merge(1,1,xts) causes a segfault;
+                calling merge(1,x) causes the xts-info (none!) from the 1st arg
+                to be used, resulting in a classless object.
   */
   if( isNull(x) || isNull(y) ) {
     if(!isNull(x)) return(x);
@@ -219,7 +223,7 @@ SEXP do_merge_xts (SEXP x, SEXP y, SEXP all, SEXP fill, SEXP retclass, SEXP coln
      either here or in the calling R code.  I suspect here is
      more useful if other function can call the C code as well. 
      If objects are not the same type, convert to REALSXP. */
-  if( TYPEOF(x) != TYPEOF(y) ) {
+  if( coerce || TYPEOF(x) != TYPEOF(y) ) {
     PROTECT( x = coerceVector(x, REALSXP) ); p++;
     PROTECT( y = coerceVector(y, REALSXP) ); p++;
   }
@@ -943,7 +947,6 @@ SEXP do_merge_xts (SEXP x, SEXP y, SEXP all, SEXP fill, SEXP retclass, SEXP coln
 /* called via .External("mergeXts", ...) */
 SEXP mergeXts (SEXP args) // mergeXts {{{
 {
-  //SEXP s, t;
   SEXP _x, _y, xtmp, result, _INDEX;
   /* colnames should be renamed as suffixes, as colnames need to be added at the C level */
   SEXP all, fill, retc, retclass, symnames, suffixes, rets, retside, env;
@@ -972,49 +975,86 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
   argstart = args; // use this to rewind list...
 
   n = 0;
+  int type_of;
+  int coerce_to_double=0;
+  if(args != R_NilValue) type_of = TYPEOF(CAR(args));
   while(args != R_NilValue) {
     if( length(CAR(args)) > 0 )
       ncs += ncols(CAR(args));
+    if(TYPEOF(CAR(args)) != type_of)
+      coerce_to_double = 1;  /* need to convert all objects if one needs to be converted */
     args = CDR(args);
     n++;
   }
-//Rprintf("ncs: %i,\tn: %i\n", ncs, n);
 
 
   /* build an index to be used in all subsequent calls */
   args = argstart;
 
-  /* test for NULLs that may be present from cbind dispatch */
   PROTECT(_x = CAR(args)); P++;
   args = CDR(args);
-  if(args == R_NilValue || (isNull(CAR(args)) && length(args) == 1)) {// no y arg or y==NULL
+
+  int leading_non_xts = 0;
+  while( !isXts(_x) ) {
+    if( args == R_NilValue ) error("no xts object to merge");
+    leading_non_xts = 1;
+    /*warning("leading non-xts objects may have been dropped");*/
+    PROTECT(_x = CAR(args)); P++;
+    args = CDR(args);
+  }
+
+  /* test for NULLs that may be present from cbind dispatch */
+  if(n < 3 && (args == R_NilValue || (isNull(CAR(args)) && length(args) == 1))) {// no y arg or y==NULL
     UNPROTECT(P);
     return(_x);
   }
 
-  PROTECT(_y = CAR(args)); P++;
-  args = CDR(args);
+  if( args != R_NilValue) {
+    PROTECT(_y = CAR(args)); P++;
+    args = CDR(args);
+  } else {
+    PROTECT(_y = duplicate(_x)); P++;
+  }
 
-  if(args != R_NilValue) {
+  if(n > 2 || leading_non_xts) { /*args != R_NilValue) {*/
     /* generalized n-case optimization
        currently if n>2 this is faster and more memory efficient
        than recursively building a merged object, object by object. */
 
     PROTECT(retc = allocVector(LGLSXP, 1)); P++;
-    LOGICAL(retc)[0] = 1;
+    LOGICAL(retc)[0] = 1; /* return class == TRUE */
     PROTECT(rets = allocVector(LGLSXP, 2)); P++;
-    LOGICAL(rets)[0] = 0;
-    LOGICAL(rets)[1] = 0;
+    LOGICAL(rets)[0] = 0; /* don't return left */
+    LOGICAL(rets)[1] = 0; /* don't return right */
   
-    PROTECT(_INDEX = do_merge_xts(_x, _y, all, fill, retc, R_NilValue, R_NilValue, rets, env)); P++;
-    while(args != R_NilValue) { // merge all objects into one zero-width common index
+    PROTECT(_INDEX = do_merge_xts(_x,
+                                  _y, 
+                                  all,
+                                  fill,
+                                  retc,
+                                  R_NilValue,
+                                  R_NilValue, 
+                                  rets, 
+                                  env,
+                                  coerce_to_double)); P++;
+
+    /* merge all objects into one zero-width common index */
+    while(args != R_NilValue) { 
       if( !isNull(CAR(args)) ) {
-        PROTECT(_INDEX = do_merge_xts(_INDEX, CAR(args), all, fill, retc, R_NilValue, R_NilValue, rets, env)); P++;
+        PROTECT(_INDEX = do_merge_xts(_INDEX,
+                                      CAR(args),
+                                      all,
+                                      fill, 
+                                      retc,
+                                      R_NilValue,
+                                      R_NilValue,
+                                      rets, 
+                                      env,
+                                      coerce_to_double)); P++;
       }
-//Rprintf("length of _INDEX: %i\n", length(GET_xtsIndex(_INDEX)));
       args = CDR(args);
-      //i++;
     }
+
     index_len = length(GET_xtsIndex(_INDEX));
   
     args = argstart; // reset args
@@ -1046,7 +1086,16 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
         continue;  // if NULL is passed, skip to the next object.
       }
 
-      xtmp = do_merge_xts(_INDEX, CAR(args), all, fill, retclass, /*colnames*/R_NilValue, R_NilValue, retside, env);
+      xtmp = do_merge_xts(_INDEX,
+                          CAR(args),
+                          all,
+                          fill,
+                          retclass,
+            /*colnames*/R_NilValue, 
+                        R_NilValue,
+                          retside,
+                          env,
+                          coerce_to_double);
       nc = ncols(xtmp);
       ncs += nc;
       nr = nrows(xtmp);
@@ -1114,7 +1163,16 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
     copy_xtsAttributes(_INDEX, result);
 
   } else { /* 2-case optimization --- simply call main routine */
-    PROTECT(result = do_merge_xts(_x, _y, all, fill, retclass, symnames /*R_NilValue*/, suffixes, retside, env)); P++;
+    PROTECT(result = do_merge_xts(_x,
+                                  _y, 
+                                 all,
+                                fill,
+                            retclass,
+                            symnames /*R_NilValue*/,
+                            suffixes,
+                             retside,
+                                 env,
+                    coerce_to_double)); P++;
   }
 
   if(P > 0) UNPROTECT(P); 

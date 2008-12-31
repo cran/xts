@@ -32,6 +32,37 @@
 /***********************************************************************/
 #include <R.h>
 #include <Rinternals.h>
+#include "xts.h"
+
+/*
+SEXP do_runsum (SEXP x, SEXP n, SEXP result)
+{
+
+}
+
+SEXP do_run (SEXP x, SEXP n, (*void)FUN)
+{
+  SEXP result;
+  int P=0;
+  int i, nrs;
+  int *int_n=NULL;
+  if(TYPEOF(n) != INTSXP) {
+    // assure that 'n' is an integer
+    PROTECT(n = coerceVector(n, INTSXP)); P++;
+  }
+  int_n = INTEGER(n); // get the first element (everything from R is a vector)
+
+  int *int_result=NULL, *int_x=NULL;
+  int int_sum = 0;
+  double *real_result=NULL, *real_x=NULL;
+  double real_sum = 0.0;
+
+  PROTECT(result = allocVector(TYPEOF(x), length(x))); P++;
+
+  int _firstNonNA = firstNonNA(x);
+
+}
+*/
 
 SEXP runSum (SEXP x, SEXP n)
 {
@@ -52,27 +83,27 @@ SEXP runSum (SEXP x, SEXP n)
 
   PROTECT(result = allocVector(TYPEOF(x), length(x))); P++;
 
+  int _firstNonNA = firstNonNA(x);
+
   switch(TYPEOF(x)) {
     /* still need to implement other types, and checking
-    //  
     // The branch by type allows for fewer type checks/branching
     // within the algorithm, providing a _much_ faster mechanism
     // to calculate the sum
-    // 
-    // need a fast way to remove/skip leading NAs ... josh???
     */
     case REALSXP:
       real_result = REAL(result);
       real_x = REAL(x);
       int_result = int_x = NULL;
-      for(i = 0; i < (*int_n); i++) {
+      for(i = 0; i < (*int_n)+_firstNonNA; i++) {
         real_result[i] = NA_REAL;
-        real_sum = real_sum + real_x[i];
+        if(i >= _firstNonNA)
+          real_sum = real_sum + real_x[i];
       }
-      real_result[ (*int_n)-1 ] = real_sum;
+      real_result[ (*int_n) + _firstNonNA - 1 ] = real_sum;
       nrs = nrows(x);
-      for(i = (*int_n); i < nrs; i++) {
-        if(real_x[i]==NA_REAL) error("Series contains non-leading NAs");
+      for(i = (*int_n)+_firstNonNA; i < nrs; i++) {
+        if(ISNA(real_x[i])) error("Series contains non-leading NAs");
         real_result[i] = real_result[i-1] + real_x[i] - real_x[i-(*int_n)];
       }
       break;
@@ -80,13 +111,14 @@ SEXP runSum (SEXP x, SEXP n)
       int_result = INTEGER(result);
       int_x = INTEGER(x);
       real_result = real_x = NULL;
-      for(i = 0; i < (*int_n); i++) {  // (*int_n) is faster that INTEGER(n)[1], a constant would be equal
+      for(i = 0; i < (*int_n)+_firstNonNA; i++) {  // (*int_n) is faster that INTEGER(n)[1], a constant would be equal
         int_result[i] = NA_INTEGER;
-        int_sum = int_sum + int_x[i];
+        if(i >= _firstNonNA)
+          int_sum = int_sum + int_x[i];
       }
-      int_result[ (*int_n)-1 ] = int_sum;
+      int_result[ (*int_n) + _firstNonNA -1 ] = int_sum;
       nrs = nrows(x);
-      for(i = (*int_n); i < nrs; i++) {
+      for(i = (*int_n)+_firstNonNA; i < nrs; i++) {
         if(int_x[i]==NA_INTEGER) error("Series contains non-leading NAs");
         int_result[i] = int_result[i-1] + int_x[i] - int_x[i-(*int_n)];
       }
