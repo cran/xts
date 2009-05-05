@@ -20,7 +20,7 @@
 
 
 `na.omit.xts` <- function(object, ...) {
-  xx <- stats:::na.omit.default(object,...)
+  xx <- .Call('na_omit_xts', object, PACKAGE="xts")
   naa <- attr(xx,'na.action')
   if(length(naa) == 0)
     return(xx)
@@ -57,3 +57,13 @@
   rbind(x,tmp)
 }
 
+na.locf.xts <- function(object, na.rm=FALSE, ...) {
+    stopifnot(is.xts(object))
+    x <- if(dim(object)[2] > 1) {
+      .xts(apply(object, 2, function(x) .Call('na_locf', x, PACKAGE='xts')),
+           .index(object), .indexCLASS=indexClass(object))
+    } else .Call("na_locf", object, PACKAGE="xts")
+    if(na.rm) {
+      return(structure(na.omit(x),na.action=NULL))
+    } else x
+}

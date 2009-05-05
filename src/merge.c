@@ -59,7 +59,7 @@ SEXP do_merge_xts (SEXP x, SEXP y,
   SEXP xindex, yindex, index, result, attr, len_xindex;
   SEXP s, t, unique;
 
-  int *int_result=NULL, *int_x=NULL, *int_y=NULL, int_fill;
+  int *int_result=NULL, *int_x=NULL, *int_y=NULL, int_fill=0;
   int *int_index=NULL, *int_xindex=NULL, *int_yindex=NULL;
   double *real_result=NULL, *real_x=NULL, *real_y=NULL;
   double *real_index=NULL, *real_xindex=NULL, *real_yindex=NULL;
@@ -1016,11 +1016,12 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
     PROTECT(_x = CAR(args)); P++;
     args = CDR(args);
   }
-
   /* test for NULLs that may be present from cbind dispatch */
-  if(n < 3 && (args == R_NilValue || (isNull(CAR(args)) && length(args) == 1))) {// no y arg or y==NULL
-    UNPROTECT(P);
-    return(_x);
+  if(!leading_non_xts) { /* leading non-xts in 2 case scenario was igoring non-xts value */
+    if(n < 3 && (args == R_NilValue || (isNull(CAR(args)) && length(args) == 1))) {/* no y arg or y==NULL */
+      UNPROTECT(P);
+      return(_x);
+    }
   }
 
   if( args != R_NilValue) {
@@ -1041,6 +1042,10 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
     LOGICAL(rets)[0] = 0; /* don't return left */
     LOGICAL(rets)[1] = 0; /* don't return right */
   
+    if( isNull(_y) ) {
+      PROTECT(_y = duplicate(_x)); P++;
+    }
+
     PROTECT(_INDEX = do_merge_xts(_x,
                                   _y, 
                                   all,
@@ -1177,6 +1182,7 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
     copy_xtsAttributes(_INDEX, result);
 
   } else { /* 2-case optimization --- simply call main routine */
+    /* likely bug in handling of merge(1, xts) case */
     PROTECT(result = do_merge_xts(_x,
                                   _y, 
                                  all,

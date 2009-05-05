@@ -24,9 +24,9 @@ function(x,on='months',k=1) {
   if(timeBased(x)) x <- xts(, order.by=x)
   if(!is.xts(x)) x <- try.xts(x, error='must be either xts-coercible or timeBased')
 
-  sys.TZ <- Sys.getenv('TZ')
-  on.exit(Sys.setenv(TZ=sys.TZ))
-  Sys.setenv(TZ='GMT')
+  #sys.TZ <- Sys.getenv('TZ')
+  #on.exit(Sys.setenv(TZ=sys.TZ))
+  #Sys.setenv(TZ='GMT')
   #indexClass(x) <- 'POSIXct'
 
   if(on == 'years') {
@@ -87,15 +87,34 @@ function(year=1970,month=1,day=1,hour=0,min=0,sec=0,tz="") {
   ISOdatetime(year,month,day,hour,min,sec,tz)
 }
 
-`lastof` <-
-function(year=1970,month=12,day=31,hour=23,min=59,sec=59,tz="") {
-  mon.lengths <- c(31,28,31,30,31,30,31,31,30,31,30,31)
-  if(missing(day)) {
-    if(month %in% 2 && year%%4 %in% 0) {
-      # is it a leap year?
-      day <- ifelse(month %in% 2 && year%%400 %in% 0,28,29)
-    } else day <- mon.lengths[month]
-  }
-  ISOdatetime(year,month,day,hour,min,sec,tz)
-}
+#`lastof` <-
+#function(year=1970,month=12,day=31,hour=23,min=59,sec=59,tz="") {
+#  mon.lengths <- c(31,28,31,30,31,30,31,31,30,31,30,31)
+#  if(missing(day)) {
+#    if(month %in% 2 && year%%4 %in% 0) {
+#      # is it a leap year?
+#      day <- ifelse(month %in% 2 && year%%400 %in% 0,28,29)
+#    } else day <- mon.lengths[month]
+#  }
+#  # horrible workaround of bug? in strptime. -- jar
+#  if(c(year,month,day,hour,min,sec) == c(1969,12,31,23,59,59) &&
+#     Sys.getenv("TZ") %in% c("","GMT","UTC")) sec <- 58.9 
+#  ISOdatetime(year,month,day,hour,min,sec,tz)
+#}
 
+lastof <-
+function (year = 1970, month = 12, day = 31, hour = 23, min = 59, sec = 59, tz = "") 
+{
+    mon.lengths <- c(31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 
+        30, 31)
+    if (missing(day)) {
+        day <- ifelse(month %in% 2, ifelse(((year%%4 %in% 0 & 
+            !year%%100 %in% 0) | (year%%400 %in% 0)), 29, 28), 
+            mon.lengths[month])
+    }
+    if (length(c(year, month, day, hour, min, sec)) == 7 && c(year, 
+        month, day, hour, min, sec) == c(1969, 12, 31, 23, 59, 
+        59) && Sys.getenv("TZ") %in% c("", "GMT", "UTC")) 
+        sec <- 58.9
+    ISOdatetime(year, month, day, hour, min, sec, tz)
+}

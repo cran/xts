@@ -89,9 +89,11 @@ function(x, retclass=NULL, length.out=NULL) {
   if(max.resolution == 2 || resolution == 'month' ) convert.to <- 'yearmon'
   if(max.resolution >  3 || resolution %in% c("H","M","S")) convert.to <- 'POSIXct'
 
-  if(is.na(to)) length.out <- 1L
+ 
+  if(is.na(to) && missing(length.out))
+    length.out <- 1L
 
-  if((!missing(retclass) && is.null(retclass)) || any(is.na(to),is.na(from))) {
+  if(((!missing(retclass) && is.null(retclass)) || any(is.na(to),is.na(from)))) {
     # return the calculated values only
     return(list(from=from,to=to,by=resolution,length.out=length.out))
   }
@@ -103,6 +105,9 @@ function(x, retclass=NULL, length.out=NULL) {
   }
 
   if(!is.null(retclass)) convert.to <- retclass
+  if(convert.to == 'POSIXct') {
+    structure(SEQ, class=c('POSIXt','POSIXct'))  # need to force the TZ to be used
+  } else
   do.call(paste('as',convert.to,sep='.'), list(SEQ))
 
 }

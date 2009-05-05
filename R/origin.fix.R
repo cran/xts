@@ -28,9 +28,48 @@
 }
 
 `as.POSIXct.numeric` <- function(x, tz="", origin='1970-01-01', ...) {
-  as.POSIXct(origin,tz=tz,...) + x
+  structure(x, class=c("POSIXt", "POSIXct"))
 }
 
 `as.POSIXlt.numeric` <- function(x, tz="", origin='1970-01-01', ...) {
   as.POSIXlt(as.POSIXct(origin,tz="UTC",...) + x, tz=tz)
+}
+
+as.POSIXct.Date <- function(x, ...)
+{
+  as.POSIXct(as.character(x))
+}
+
+as.Date.POSIXct <- function(x, ...)
+{
+  z <- floor(unclass((x - unclass(as.POSIXct('1970-01-01'))))/86400)
+  attr(z, 'tzone') <- NULL
+  structure(z, class="Date")
+}
+
+as.POSIXlt.Date <- function(x, ...)
+{
+  as.POSIXlt(xts:::as.POSIXct.Date(x))
+}
+
+as.POSIXct.yearmon <- function(x, ...)
+{
+  structure(as.POSIXct("1970-01-01") + unclass(as.Date(x))*86400,
+            class=c("POSIXt","POSIXct"))
+}
+
+as.POSIXlt.yearmon <- function(x, ...)
+{
+  as.POSIXlt(xts:::as.POSIXct.yearmon(x))
+}
+
+as.POSIXct.dates <- function(x, ...)
+{
+  # need to implement our own method to correctly handle TZ
+  #as.POSIXct(as.character(as.POSIXlt(x,tz="GMT")))
+  structure(as.POSIXct(as.POSIXlt(x, tz="GMT"), tz=""),class=c("POSIXt","POSIXct"))
+}
+as.chron.POSIXct <- function(x, ...)
+{
+  structure(as.chron(as.POSIXlt(as.character(x))))
 }

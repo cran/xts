@@ -22,36 +22,38 @@
 `.subset.xts` <- `[.xts` <-
 function(x, i, j, drop = FALSE, ...) 
 {
-#    sys.TZ <- Sys.getenv('TZ') 
-#    Sys.setenv(TZ='GMT')
-#    on.exit(Sys.setenv(TZ=sys.TZ))
-
+    check.TZ(x)
     original.cols <- NCOL(x)
     original.attr <- xtsAttributes(x)
     
     # test for negative subscripting in i
     if (!missing(i) && is.numeric(i) ) {
       if(any(i < 0)) {
-        if(!all(i < 0))
+        if(!all(i <= 0))
           stop('only zeros may be mixed with negative subscripts')
         i <- (1:NROW(x))[i]
       }
+      if(max(i) > NROW(x))
+        stop('subscript out of bounds')
     }
 
     # test for negative subscripting in j
-    if (!missing(j) && is.numeric(j) && any(j < 0)) {
-      if(!all(j < 0))
-        stop('only zeros may be mixed with negative subscripts')
-      j <- (1:NCOL(x))[j]
+    if (!missing(j) && is.numeric(j)) { # && any(j < 0)) {
+      if(any(j < 0)) {
+        if(!all(j < 0))
+          stop('only zeros may be mixed with negative subscripts')
+        j <- (1:NCOL(x))[j]
+      }
+      if(max(j) > NCOL(x))
+        stop('subscript out of bounds')
     }
 
     if (missing(i)) 
-      # this is horribly wasteful  FIXME
       i <- 1:NROW(x)
     
     if (timeBased(i)) 
       # this shouldn't happen either, though less important I suspect  FIXME
-      i <- as.character(as.POSIXct(i)) 
+      i <- as.character(i) 
 
     if(is.logical(i))
       i <- which(i) #(1:NROW(x))[rep(i,length.out=NROW(x))]
@@ -61,6 +63,7 @@ function(x, i, j, drop = FALSE, ...)
       # must be able to process - and then allow for operations???
 
       i.tmp <- NULL
+
       adjust.time <- function(Ftime,Findex,Ltime,Lindex) {
         # used to adjust requested time to actual time in object
         if( (Ltime < Findex) || (Ftime > Lindex) ) return(NA)
@@ -68,6 +71,8 @@ function(x, i, j, drop = FALSE, ...)
         Ltime <- min(Lindex, Ltime)
         return(list(first.time=Ftime,last.time=Ltime))
       }
+
+      # main loop over elements of i, find range for each within data
       for(ii in i) {
         if(!identical(grep("(::)|/",ii),integer(0))) {
           tBR <- timeBasedRange(ii)
@@ -82,24 +87,12 @@ function(x, i, j, drop = FALSE, ...)
             last.time  <- .index(x)[NROW(x)]
           } else last.time <- tBR[2]
 
-#          # check if range requested is in index
-#          first.index <- first(.index(x))
-#          last.index  <- last(.index(x))
-#          adjusted.times <- adjust.time(first.time, first.index,
-#                                        last.time, last.index)
-#          if(length(adjusted.times) > 1) {
-#            i.tmp <- c(i.tmp,
-#                       seq.int(binsearch(first.time, .index(x),  TRUE),
-#                              binsearch(last.time,  .index(x), FALSE))
-#                      )
-#          }
         } else {
-          # if single date is given - get start and end points if resolution of
-          # series is greater than the time specified
-            dates <- paste(ii,ii,sep='/')
-            tBR <- timeBasedRange(dates)
-            first.time <- tBR[1]
-            last.time  <- tBR[2]
+          # copy single date to date/date
+          dates <- paste(ii,ii,sep='/')
+          tBR <- timeBasedRange(dates)
+          first.time <- tBR[1]
+          last.time  <- tBR[2]
         }
         first.index <- first(.index(x))
         last.index  <- last(.index(x))
@@ -110,12 +103,9 @@ function(x, i, j, drop = FALSE, ...)
                      seq.int(binsearch(adjusted.times$first.time, .index(x),  TRUE),
                              binsearch(adjusted.times$last.time,  .index(x), FALSE))
                      )
-        }
-          #} else {
-          #  i2 <- binsearch(timeBasedRange(ii)[1], .index(x), NULL)
-          #  if(!is.na(i2))
-          #    i.tmp <- c(i.tmp, i2)
-          #}
+        } # else leave i.tmp == NULL
+        if(!isOrdered(i.tmp, strict=FALSE)) # fixed non-match within range bug
+          i.tmp <- NULL
       }
       i <- i.tmp
     }
@@ -134,14 +124,7 @@ function(x, i, j, drop = FALSE, ...)
         x.tmp <- .xts(rep(NA,length(i)), .index(x)[i])
         return((colnames(x.tmp) <- colnames(x)))
       } else 
-      return(.Call('do_subset_xts', x, as.integer(i), as.integer(1:original.cols), PACKAGE='xts'))
-#      if(!is.null(original.attr)) {
-#        for(ii in 1:length(original.attr)) {
-#          attr(x,names(original.attr)[ii]) <- original.attr[[ii]]
-#          if(names(original.attr)[ii]=='.ROWNAMES') attr(x,'.ROWNAMES') <- original.attr[[ii]][i]
-#        }
-#      }
-      #if(!is.null(original.cols)) j <- 1:original.cols # -- this is dead
+      return(.Call('do_subset_xts', x, as.integer(i), as.integer(1:original.cols), drop, PACKAGE='xts'))
     }
     else {
         j <- sapply(j, function(xx) {
@@ -150,14 +133,8 @@ function(x, i, j, drop = FALSE, ...)
                          } else xx
                        })
         
-        return(.Call('do_subset_xts', x, as.integer(i), as.integer(j), PACKAGE='xts'))
-#        if(!is.null(original.attr)) {
-#          for(ii in 1:length(original.attr)) {
-#            attr(x,names(original.attr)[ii]) <- original.attr[[ii]]
-#          }
-#        }
+        return(.Call('do_subset_xts', x, as.integer(i), as.integer(j), drop, PACKAGE='xts'))
     }
-#    x
 }
 
 # Replacement method for xts objects
@@ -170,14 +147,14 @@ function(x, i, j, drop = FALSE, ...)
 #`xtsreplacement` <-
 function(x, i, j, value) 
 {
-    sys.TZ <- Sys.getenv('TZ') 
-    Sys.setenv(TZ='GMT')
-    on.exit(Sys.setenv(TZ=sys.TZ))
+    #sys.TZ <- Sys.getenv('TZ') 
+    #Sys.setenv(TZ='GMT')
+    #on.exit(Sys.setenv(TZ=sys.TZ))
     if (!missing(i)) {
 
     if (timeBased(i)) 
       # this shouldn't happen either, though less important I suspect  FIXME
-      i <- as.character(as.POSIXct(i)) 
+      i <- as.character(i) 
 
     if(is.logical(i))
       i <- which(i) #(1:NROW(x))[rep(i,length.out=NROW(x))]
