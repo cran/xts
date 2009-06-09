@@ -94,6 +94,7 @@ export(apply.daily,
 export(rbind.xts,
        cbind.xts,
        c.xts)
+export(split.xts)
 
 export(axTicksByTime)
 
@@ -108,6 +109,7 @@ export(lag.xts)
 export(diff.xts)
 export(merge.xts)
 #export(mergeXts)
+S3method(split, xts)
 S3method(lag,xts)
 S3method(diff,xts)
 S3method(first,default)
@@ -175,9 +177,9 @@ S3method(as.xts, ts)
 S3method(as.ts, xts)
 
 # zoo specific methods
-importFrom(zoo,as.zoo)
+#importFrom(zoo,as.zoo)  # now in zoo
 S3method(as.xts,zoo)
-S3method(as.zoo,xts)
+#S3method(as.zoo,xts) # now in zoo
 
 # data.frame specific methods
 S3method(as.xts,data.frame)
