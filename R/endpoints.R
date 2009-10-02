@@ -36,12 +36,12 @@ function(x,on='months',k=1) {
   } else
 
   if(on == 'quarters') {
-    xi <- (as.POSIXlt(index(x))$mon%/%3) + 1
+    xi <- (posixltindex$mon%/%3) + 1
     as.integer(c(0,which(diff(xi) != 0),NR))
   } else 
 
   if(on == 'months') {
-    as.integer(c(0, which(diff(as.POSIXlt(index(x))$mon %/% k + 1) != 0), NR) )
+    as.integer(c(0, which(diff(posixltindex$mon %/% k + 1) != 0), NR) )
   } else 
   if(on == 'weeks') {
     as.integer(c(0, which(diff( (.index(x) + (3L * 86400L)) %/% 604800L %/% k + 1) != 0), NR) )
@@ -117,7 +117,7 @@ function (year = 1970, month = 12, day = 31, hour = 23, min = 59, sec = 59, tz =
             !year%%100 %in% 0) | (year%%400 %in% 0)), 29, 28), 
             mon.lengths[month])
     }
-    if (length(c(year, month, day, hour, min, sec)) == 7 && c(year, 
+    if (length(c(year, month, day, hour, min, sec)) == 6 && c(year, 
         month, day, hour, min, sec) == c(1969, 12, 31, 23, 59, 
         59) && Sys.getenv("TZ") %in% c("", "GMT", "UTC")) 
         sec <- 58.9

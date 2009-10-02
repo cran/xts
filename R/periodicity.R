@@ -31,7 +31,7 @@ time.frequency <- function(x) {
   return(res)
 }
 
-`periodicity` <- function(x, ...) {
+periodicity <- function(x, ...) {
   if( timeBased(x) || !is.xts(x) )
     x <- try.xts(x, error='\'x\' needs to be timeBased or xtsible')
 
@@ -41,45 +41,51 @@ time.frequency <- function(x) {
 
   units <- 'days' # the default if p > hourly
   scale <- 'years'# the default for p > quarterly
+  label <- 'year'
 
-  if( p <= 1 ) {
-    # 86400 / 24 / 60 / 60
+  if( p < 60 ) {
     units <- 'secs'
     scale <- 'seconds'
-  } else 
-  if( p <= 60 ) {
-    # 86400 / 24 / 60
-    units <- 'mins'
-    scale <- 'minute'
+    label <- 'second'
   } else
-  if( p <= 3600 ) {
-    # 86400 / 24
-    units <- 'hours'
-    scale <- 'hourly'
+  if(p < 3600) {
+    units <- "mins"
+    scale <- "minute"
+    label <- "minute"
+    p <- p/60L
   } else
-  if( p <= 86400 ) {
-    # 86400 * 1
-    scale <- 'daily'
+  if(p < 86400) {
+    units <- "hours"
+    scale <- "hourly"
+    label <- "hour"
+  } else
+  if(p == 86400) {
+    scale <- "daily"
+    label <- "day"
   } else
   if( p <= 604800) {
     # 86400 * 7
     scale <- 'weekly'
+    label <- "week"
   } else 
   if( p <= 2678400 ) {
     # 86400 * 31
     scale <- 'monthly'
+    label <- "month"
   } else
-  if( p <= 7862400 ) {
-    # 86400 * 91
+  if( p <=  7948800 ) {
+    # 86400 * 92
     scale <- 'quarterly'
+    label <- "quarter"
   }
 
-  structure(list( difftime = structure(p,units=units,class='difftime'),
+  structure(list(difftime = structure(p,units=units,class='difftime'),
                  frequency = p,
-                     start = start(x),
-                       end = end(x),
-                     units = units,
-                     scale = scale),
+                 start = start(x),
+                 end = end(x),
+                 units = units,
+                 scale = scale,
+                 label = label),
             class = 'periodicity') 
   
 }

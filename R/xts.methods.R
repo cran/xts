@@ -18,23 +18,71 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+.subset_xts <- function(x, i, j, ...) {
+  if(missing(i)) {
+    i <- 1:NROW(x)
+  }
+  if(missing(j)) {
+    j <- 1:NCOL(x)
+  }
+  .Call('do_subset_xts', x, i, j, FALSE, PACKAGE='xts')
+}
 
 `.subset.xts` <- `[.xts` <-
 function(x, i, j, drop = FALSE, ...) 
 {
-    check.TZ(x)
-    original.cols <- NCOL(x)
-    original.attr <- xtsAttributes(x)
+    #check.TZ(x)
+    #original.cols <- NCOL(x)
+    #original.attr <- xtsAttributes(x)
     
+    if(missing(i)) {
+      i <- 1:NROW(x)
+    } else
     # test for negative subscripting in i
-    if (!missing(i) && is.numeric(i) ) {
-      if(any(i < 0)) {
+    if (!missing(i) && is.numeric(i)) {
+      #if(any(i < 0)) {
+      if(.Call("any_negative", i, PACKAGE="xts")) {
         if(!all(i <= 0))
           stop('only zeros may be mixed with negative subscripts')
         i <- (1:NROW(x))[i]
       }
       if(max(i) > NROW(x))
         stop('subscript out of bounds')
+    } else
+    if(inherits(i, "AsIs") && is.character(i)) {
+      i <- MATCH(i, format(index(x)))
+    } else
+    if (timeBased(i)) { # || (inherits(i, "AsIs") && is.character(i))) {
+      if(inherits(i, "POSIXct")) {
+        i <- match(i, .index(x))
+      } else {
+        i <- match(as.POSIXct(as.character(i)), .index(x))
+      }
+      i[is.na(i)] <- 0
+    } else 
+    if(is.logical(i)) {
+      i <- which(i) #(1:NROW(x))[rep(i,length.out=NROW(x))]
+    } else
+    if (is.character(i)) {
+      # enables subsetting by date style strings
+      # must be able to process - and then allow for operations???
+
+      i.tmp <- NULL
+
+      for(ii in i) {
+        #adjusted.times <- .parseISO8601(ii, first(.index(x)), last(.index(x)))
+        #`[.POSIXct` <- function(x, ...) { .Class="Matrix"; NextMethod("[") }
+        adjusted.times <- .parseISO8601(ii, .index(x)[1], .index(x)[NROW(x)])
+        if(length(adjusted.times) > 1) {
+          firstlast <- c(seq.int(binsearch(adjusted.times$first.time, .index(x),  TRUE),
+                                 binsearch(adjusted.times$last.time,  .index(x), FALSE))
+                     )
+          if(isOrdered(firstlast, strict=FALSE)) # fixed non-match within range bug
+            i.tmp <- c(i.tmp, firstlast)
+        }
+      }
+      i <- i.tmp
+      #if(is.null(i)) i <- NA
     }
 
     # test for negative subscripting in j
@@ -48,87 +96,11 @@ function(x, i, j, drop = FALSE, ...)
         stop('subscript out of bounds')
     }
 
-    if (missing(i)) {
-      i <- 1:NROW(x)
-    } else
-    if(inherits(i, "AsIs") && is.character(i)) {
-      i <- MATCH(i, format(index(x)))
-      #i <- which(format(index(x)) %in% i) 
-    } else
-    # this timeBased -> character shouldn't happen 
-    # a better approach would be to convert this into the appropriate POSIXct
-    # time as that is what the .index is, and subsequently could use binsearch
-    # to find what we need.  All of this should be part of our super-time thinking
-    if (timeBased(i)) {
-#      if(class(i)[1] == "Date") {
-#        if(indexClass(x)[1]=="Date") {
-#          i <- MATCH(i, .index(x) %/% 86400)
-#        } else i <- MATCH(as.POSIXct(strftime(i)), .index(x))
-#      } else
-#      i <- MATCH(unclass(as.POSIXct(i)), .index(x))
-      #i <- which(.index(x) %in% unclass(as.POSIXct(i)))
-      i <- as.character(i) 
-    } else 
-    if(is.logical(i)) {
-      i <- which(i) #(1:NROW(x))[rep(i,length.out=NROW(x))]
-    } 
-
-    if (is.character(i)) {
-      # enables subsetting by date style strings
-      # must be able to process - and then allow for operations???
-
-      i.tmp <- NULL
-
-      adjust.time <- function(Ftime,Findex,Ltime,Lindex) {
-        # used to adjust requested time to actual time in object
-        if( (Ltime < Findex) || (Ftime > Lindex) ) return(NA)
-        Ftime <- max(Findex, Ftime)
-        Ltime <- min(Lindex, Ltime)
-        return(list(first.time=Ftime,last.time=Ltime))
-      }
-
-      # main loop over elements of i, find range for each within data
-      for(ii in i) {
-        if(!identical(grep("(::)|/",ii),integer(0))) {
-          tBR <- timeBasedRange(ii)
-          
-          # the first index value to be found
-          if(is.na(tBR[1])) {
-            first.time <- .index(x)[1]
-          } else first.time <- tBR[1]
-
-          # the last index value to be found
-          if(is.na(tBR[2])) {
-            last.time  <- .index(x)[NROW(x)]
-          } else last.time <- tBR[2]
-
-        } else {
-          # copy single date to date/date
-          dates <- paste(ii,ii,sep='/')
-          tBR <- timeBasedRange(dates)
-          first.time <- tBR[1]
-          last.time  <- tBR[2]
-        }
-        first.index <- first(.index(x))
-        last.index  <- last(.index(x))
-        adjusted.times <- adjust.time(first.time, first.index,
-                                      last.time, last.index)
-        if(length(adjusted.times) > 1) {
-          firstlast <- c(seq.int(binsearch(adjusted.times$first.time, .index(x),  TRUE),
-                                 binsearch(adjusted.times$last.time,  .index(x), FALSE))
-                     )
-          if(isOrdered(firstlast, strict=FALSE)) # fixed non-match within range bug
-            i.tmp <- c(i.tmp, firstlast)
-        }
-      }
-      i <- i.tmp
-    }
   
     if(!isOrdered(i,strictly=FALSE)) {
       i <- sort(i)
-      # possibly can test for dup=TRUE here, if we implement a global option
     }
-    # .subset is picky, 0's in the 'i' position cause failures -- is this still nec? -jar
+    # subset is picky, 0's in the 'i' position cause failures
     zero.index <- binsearch(0, i, NULL)
     if(!is.na(zero.index))
       i <- i[ -zero.index ]
@@ -140,7 +112,7 @@ function(x, i, j, drop = FALSE, ...)
       } else {
         return(.Call('do_subset_xts', 
                      x, as.integer(i),
-                     as.integer(1:original.cols), 
+                     as.integer(1:NCOL(x)), 
                      drop, PACKAGE='xts'))
       }
     }
@@ -152,7 +124,7 @@ function(x, i, j, drop = FALSE, ...)
                        })
         
         return(.Call('do_subset_xts', x, as.integer(i), as.integer(j), drop, PACKAGE='xts'))
-    }
+   } 
 }
 
 # Replacement method for xts objects

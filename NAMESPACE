@@ -5,7 +5,8 @@ useDynLib(xts)
 importFrom(stats, lag)
 importFrom(stats, as.ts)
 
-# debugging
+export(.parseISO8601)
+
 export(firstof,
        lastof)
 
@@ -30,12 +31,14 @@ export(.indexsec,
 export(isOrdered)
 
 export(.subset.xts)
+export(.subset_xts)
 
 # user visible core xts functions
 export(xts, .xts)
 export(as.xts)
 export(is.xts)
 export(endpoints)
+export(align.time)
 export(dimnames.xts)
 export('dimnames<-.xts')
 export(xcoredata)
@@ -117,6 +120,9 @@ S3method(last,default)
 S3method(first,xts)
 S3method(last,xts)
 S3method(print,periodicity)
+S3method(align.time, xts)
+S3method(align.time, POSIXct)
+S3method(align.time, POSIXlt)
 
 # xts methods
 importFrom(zoo,coredata)
@@ -125,6 +131,7 @@ importFrom(zoo,'index<-')
 importFrom(zoo,'time<-')
 importFrom(zoo, na.locf)
 importFrom(zoo, as.zoo)
+#importFrom(zoo, rollapply)
 importFrom(stats,na.omit)
 importFrom(stats,start)
 importFrom(stats,end)
@@ -170,6 +177,7 @@ S3method(cumsum, xts)
 S3method(cumprod, xts)
 S3method(cummin, xts)
 S3method(cummax, xts)
+#S3method(rollapply, xts)
 
 # list specific methods
 S3method(as.list,xts)
