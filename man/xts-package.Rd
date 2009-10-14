@@ -34,4 +34,5 @@ Maintainer: Jeffrey A. Ryan <jeff.a.ryan@gmail.com>
    \code{\link{xts}}
    \code{\link{as.xts}}
    \code{\link{reclass}}
+   \code{\link[zoo:zoo]{zoo}}
 }
