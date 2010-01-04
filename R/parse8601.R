@@ -17,6 +17,9 @@
 #
 # Copyright 2009. Jeffrey A. Ryan. All rights reserved.
 # This is licensed under the GPL version 3
+.makeISO8601 <- function(x) {
+  paste(start(x),end(x),sep="/")
+}
 
 .parseISO8601 <- function(x, start, end) {
  # x: character vector of length 1 in ISO8601:2004(e) format
@@ -85,7 +88,7 @@
    time <- sprintf("%-6s", time)
    H <- substr(time,0,2)
    M <- substr(time,3,4)
-   S <- substr(time,5,6)
+   S <- substr(time,5,10000L)
    } else H<-M<-S<-""
 
    # return as list

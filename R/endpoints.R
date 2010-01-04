@@ -22,14 +22,18 @@
 endpoints <-
 function(x,on='months',k=1) {
   if(timeBased(x)) {
-    x <- xts(, order.by=x)
     NR <- length(x)
+    x <- xts(, order.by=x)
   } else NR <- NROW(x)
 
   if(!is.xts(x)) 
     x <- try.xts(x, error='must be either xts-coercible or timeBased')
 
-  posixltindex <- as.POSIXlt(structure( .index(x), class=c("POSIXt","POSIXct")))
+  # posixltindex is costly in memory (9x length of time)
+  # make sure we really need it
+  if(on %in% c('years','quarters','months','weeks','days'))
+    posixltindex <- as.POSIXlt(structure( .index(x), class=c("POSIXt","POSIXct")))
+
   if(on == 'years') {
     #as.integer(c(0, which(diff(as.POSIXlt(index(x))$year %/% k + 1) != 0), NR) )
     as.integer(c(0, which(diff(posixltindex$year %/% k + 1) != 0), NR))
@@ -41,36 +45,43 @@ function(x,on='months',k=1) {
   } else 
 
   if(on == 'months') {
-    as.integer(c(0, which(diff(posixltindex$mon %/% k + 1) != 0), NR) )
+    #as.integer(c(0, which(diff(posixltindex$mon %/% k + 1) != 0), NR) )
+    .Call("endpoints", posixltindex$mon, 1L, k)
   } else 
   if(on == 'weeks') {
-    as.integer(c(0, which(diff( (.index(x) + (3L * 86400L)) %/% 604800L %/% k + 1) != 0), NR) )
-    #c(0,which(diff(as.numeric(format(index(x),'%W')) %/% k + 1) != 0),NR)
+    #as.integer(c(0, which(diff( (.index(x) + (3L * 86400L)) %/% 604800L %/% k + 1) != 0), NR) )
+    .Call("endpoints", .index(x)+3L*86400L, 604800L, k)
   } else
   if(on == 'days') {
-    #c(0, which(diff(as.POSIXlt(index(x))$yday %/% k + 1) != 0), NR) 
     #as.integer(c(0, which(diff(.index(x) %/% 86400L %/% k + 1) != 0), NR))
-    as.integer(c(0, which(diff(posixltindex$yday %/% k + 1) != 0), NR))
+    #as.integer(c(0, which(diff(posixltindex$yday %/% k + 1) != 0), NR))
+    .Call("endpoints", posixltindex$yday, 1L, k)
   } else
+  # non-date slicing should be indifferent to TZ and DST, so use math instead
   if(on == 'hours') {
     #c(0, which(diff(as.POSIXlt(index(x))$hour %/% k + 1) != 0), NR) 
     #as.integer(c(0, which(diff(.index(x) %/% 3600L %/% k + 1) != 0), NR))
-    as.integer(c(0, which(diff(posixltindex$hour %/% k + 1) != 0), NR))
+    #as.integer(c(0, which(diff(posixltindex$hour %/% k + 1) != 0), NR))
+    .Call("endpoints", .index(x), 3600L, k)
   } else
   if(on == 'minutes' || on == 'mins') {
     #c(0, which(diff(as.POSIXlt(index(x))$min %/% k + 1) != 0), NR) 
     #as.integer(c(0, which(diff(.index(x) %/% 60L %/% k + 1) != 0), NR))
-    as.integer(c(0, which(diff(posixltindex$min %/% k + 1) != 0), NR))
+    #as.integer(c(0, which(diff(posixltindex$min %/% k + 1) != 0), NR))
+    .Call("endpoints", .index(x), 60L, k)
   } else
   if(on == 'seconds' || on == 'secs') {
     #c(0, which(diff(as.POSIXlt(index(x))$sec %/% k + 1) != 0), NR) 
-    as.integer(c(0, which(diff(.index(x) %/%  k + 1) != 0), NR))
+    #as.integer(c(0, which(diff(.index(x) %/%  k + 1) != 0), NR))
+    .Call("endpoints", .index(x), 1L, k)
   } else
   if(on == 'milliseconds' || on == 'ms') {
-    as.integer(c(0, which(diff(.index(x)%/%.001%/%k + 1) != 0), NR))
+    #as.integer(c(0, which(diff(.index(x)%/%.001%/%k + 1) != 0), NR))
+    .Call("endpoints", .index(x)%/%.001, 1L, k)
   } else
   if(on == 'microseconds' || on == 'us') {
-    as.integer(c(0, which(diff(.index(x)%/%.000001%/%k + 1) != 0), NR))
+    #as.integer(c(0, which(diff(.index(x)%/%.000001%/%k + 1) != 0), NR))
+    .Call("endpoints", .index(x)%/%.000001, 1L, k)
   } else {
     stop('unsupported "on" argument')
   }
@@ -92,24 +103,18 @@ function(year=1970,month=1,day=1,hour=0,min=0,sec=0,tz="") {
   ISOdatetime(year,month,day,hour,min,sec,tz)
 }
 
-#`lastof` <-
-#function(year=1970,month=12,day=31,hour=23,min=59,sec=59,tz="") {
-#  mon.lengths <- c(31,28,31,30,31,30,31,31,30,31,30,31)
-#  if(missing(day)) {
-#    if(month %in% 2 && year%%4 %in% 0) {
-#      # is it a leap year?
-#      day <- ifelse(month %in% 2 && year%%400 %in% 0,28,29)
-#    } else day <- mon.lengths[month]
-#  }
-#  # horrible workaround of bug? in strptime. -- jar
-#  if(c(year,month,day,hour,min,sec) == c(1969,12,31,23,59,59) &&
-#     Sys.getenv("TZ") %in% c("","GMT","UTC")) sec <- 58.9 
-#  ISOdatetime(year,month,day,hour,min,sec,tz)
-#}
-
 lastof <-
-function (year = 1970, month = 12, day = 31, hour = 23, min = 59, sec = 59, tz = "") 
+function (year = 1970,
+          month = 12,
+          day = 31,
+          hour = 23, 
+          min = 59,
+          sec = 59,
+          subsec=.99999, tz = "") 
 {
+    if(!missing(sec) && sec %% 1 != 0)
+      subsec <- 0
+    sec <- sec + subsec
     mon.lengths <- c(31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 
         30, 31)
     if (missing(day)) {
@@ -120,6 +125,6 @@ function (year = 1970, month = 12, day = 31, hour = 23, min = 59, sec = 59, tz =
     if (length(c(year, month, day, hour, min, sec)) == 6 && c(year, 
         month, day, hour, min, sec) == c(1969, 12, 31, 23, 59, 
         59) && Sys.getenv("TZ") %in% c("", "GMT", "UTC")) 
-        sec <- 58.9
+        sec <- sec-1
     ISOdatetime(year, month, day, hour, min, sec, tz)
 }

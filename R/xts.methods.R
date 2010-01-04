@@ -29,7 +29,7 @@
 }
 
 `.subset.xts` <- `[.xts` <-
-function(x, i, j, drop = FALSE, ...) 
+function(x, i, j, drop = FALSE, which.i=FALSE,...) 
 {
     #check.TZ(x)
     #original.cols <- NCOL(x)
@@ -87,12 +87,12 @@ function(x, i, j, drop = FALSE, ...)
 
     # test for negative subscripting in j
     if (!missing(j) && is.numeric(j)) { # && any(j < 0)) {
-      if(any(j < 0)) {
-        if(!all(j < 0))
+      if(any(na.omit(j) < 0)) {
+        if(!all(na.omit(j) < 0))
           stop('only zeros may be mixed with negative subscripts')
         j <- (1:NCOL(x))[j]
       }
-      if(max(j) > NCOL(x))
+      if(max(j,na.rm=TRUE) > NCOL(x))
         stop('subscript out of bounds')
     }
 
@@ -104,6 +104,9 @@ function(x, i, j, drop = FALSE, ...)
     zero.index <- binsearch(0, i, NULL)
     if(!is.na(zero.index))
       i <- i[ -zero.index ]
+
+    if(which.i)
+      return(i)
 
     if (missing(j)) {
       if(length(x)==0) {
@@ -117,6 +120,11 @@ function(x, i, j, drop = FALSE, ...)
       }
     }
     else {
+        if(is.logical(j)) {
+          if(length(j) == 1) {
+            j <- (1:NCOL(x))[rep(j, NCOL(x))]
+          } else j <- (1:NCOL(x))[j]
+        }
         j <- sapply(j, function(xx) {
                          if(is.character(xx)) {
                            which(xx==colnames(x))

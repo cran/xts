@@ -37,6 +37,14 @@ int firstNonNA (SEXP x)
   nr = nrows(x);
 
   switch(TYPEOF(x)) {
+    case LGLSXP:
+      int_x = LOGICAL(x);
+      for(i=0; i<nr; i++) {
+        if(int_x[i]!=NA_LOGICAL) {
+          break;
+        }
+      }
+      break;
     case INTSXP:
       int_x = INTEGER(x);
       for(i=0; i<nr; i++) {
@@ -48,7 +56,7 @@ int firstNonNA (SEXP x)
     case REALSXP:
       real_x = REAL(x);
       for(i=0; i<nr; i++) {
-        if(!ISNA(real_x[i])) {
+        if(!ISNA(real_x[i]) && !ISNAN(real_x[i])) {
           break;
         }
       }
@@ -80,6 +88,14 @@ SEXP naCheck (SEXP x, SEXP check)
 
   nr = nrows(x);
   switch(TYPEOF(x)) {
+    case LGLSXP:
+      int_x = LOGICAL(x);
+      for(i=_first; i<nr; i++) {
+        if(int_x[i] == NA_LOGICAL) {
+          error("Series contains non-leading NAs");  
+        }
+      }
+      break;
     case INTSXP:
       int_x = INTEGER(x);
       for(i=_first; i<nr; i++) {
@@ -91,7 +107,7 @@ SEXP naCheck (SEXP x, SEXP check)
     case REALSXP:
       real_x = REAL(x);
       for(i=_first; i<nr; i++) {
-        if(ISNA(real_x[i])) {
+        if(ISNA(real_x[i]) || ISNAN(real_x[i])) {
           error("Series contains non-leading NAs");  
         }
       }
@@ -105,9 +121,10 @@ SEXP naCheck (SEXP x, SEXP check)
   return(first);
 }
 
-SEXP na_locf (SEXP x)
+SEXP na_locf (SEXP x, SEXP fromLast)
 {
-  /* only works on univariate data */
+  /* only works on univariate data         *
+   * of type LGLSXP, INTSXP and REALSXP.   */
   SEXP result;
 
   int i, nr, _first, P=0;
@@ -120,37 +137,81 @@ SEXP na_locf (SEXP x)
   double *real_x=NULL, *real_result=NULL;
 
   if(ncols(x) > 1)
-    error("na.locf.xts only handle univariate, dimensioned data");
+    error("na.locf.xts only handles univariate, dimensioned data");
 
   nr = nrows(x);
 
   PROTECT(result = allocVector(TYPEOF(x), nrows(x))); P++;
 
   switch(TYPEOF(x)) {
+    case LGLSXP:
+      int_x = LOGICAL(x);
+      int_result = LOGICAL(result);
+      if(!LOGICAL(fromLast)[0]) {
+        /* copy leading NAs */
+        for(i=0; i < (_first+1); i++) {
+          int_result[i] = int_x[i];
+        }
+        /* result[_first] now has first value fromLast=FALSE */
+        for(i=_first+1; i<nr; i++) {
+          int_result[i] = int_x[i];
+          if(int_result[i] == NA_LOGICAL)
+            int_result[i] = int_result[i-1];
+        }
+      } else {
+        /* nr-2 is first position to fill fromLast=TRUE */
+        int_result[nr-1] = int_x[nr-1];
+        for(i=nr-2; i>=0; i--) {
+          int_result[i] = int_x[i];
+          if(int_result[i] == NA_LOGICAL)
+            int_result[i] = int_result[i+1];
+        }
+      }
+      break;
     case INTSXP:
       int_x = INTEGER(x);
       int_result = INTEGER(result);
-      /* copy leading NAs */
-      for(i=0; i < (_first+1); i++) {
-        int_result[i] = int_x[i];
-      }
-      /* result[_first] now has first value */
-      for(i=_first+1; i<nr; i++) {
-        int_result[i] = int_x[i];
-        if(int_result[i] == NA_INTEGER)
-          int_result[i] = int_result[i-1];
+      if(!LOGICAL(fromLast)[0]) {
+        /* copy leading NAs */
+        for(i=0; i < (_first+1); i++) {
+          int_result[i] = int_x[i];
+        }
+        /* result[_first] now has first value fromLast=FALSE */
+        for(i=_first+1; i<nr; i++) {
+          int_result[i] = int_x[i];
+          if(int_result[i] == NA_INTEGER)
+            int_result[i] = int_result[i-1];
+        }
+      } else {
+        /* nr-2 is first position to fill fromLast=TRUE */
+        int_result[nr-1] = int_x[nr-1];
+        for(i=nr-2; i>=0; i--) {
+          int_result[i] = int_x[i];
+          if(int_result[i] == NA_INTEGER)
+            int_result[i] = int_result[i+1];
+        }
       }
       break;
     case REALSXP:
       real_x = REAL(x);
       real_result = REAL(result);
-      for(i=0; i < (_first+1); i++) {
-        real_result[i] = real_x[i];
-      }
-      for(i=_first+1; i<nr; i++) {
-        real_result[i] = real_x[i];
-        if(ISNA(real_result[i]))
-          real_result[i] = real_result[i-1];
+      if(!LOGICAL(fromLast)[0]) {   /* fromLast=FALSE */
+        for(i=0; i < (_first+1); i++) {
+          real_result[i] = real_x[i];
+        }
+        for(i=_first+1; i<nr; i++) {
+          real_result[i] = real_x[i];
+          if(ISNA(real_result[i]) || ISNAN(real_result[i]))
+            real_result[i] = real_result[i-1];
+        }
+      } else {                      /* fromLast=TRUE */
+        real_result[nr-1] = real_x[nr-1];
+        for(i=nr-2; i>=0; i--) {
+          real_result[i] = real_x[i];
+          if(ISNA(real_result[i]) || ISNAN(real_result[i]))
+            real_result[i] = real_result[i+1];
+        }
+
       }
       break;
     default:
@@ -211,7 +272,7 @@ SEXP na_omit_xts (SEXP x)
       for(i=0; i<nr; i++) {
         for(j=0; j<nc; j++) {
           ij = i + j*nr;
-          if(ISNA(real_x[ij])) {
+          if(ISNA(real_x[ij]) || ISNAN(real_x[ij])) {
             not_NA--;
             break;
           }   
@@ -235,6 +296,23 @@ SEXP na_omit_xts (SEXP x)
 
   not_NA = NA = 0;
   switch(TYPEOF(x)) {
+    case LGLSXP:
+      for(i=0; i<nr; i++) {
+        for(j=0; j<nc; j++) {
+          ij = i + j*nr;
+          if(LOGICAL(x)[ij] == NA_LOGICAL) {
+            int_na_index[NA] = i+1;
+            NA++;
+            break;
+          }
+          if(j==(nc-1)) {
+            /* make it to end of column, OK*/
+            int_not_na_index[not_NA] = i+1;
+            not_NA++;
+          }   
+        }   
+      }
+      break;
     case INTSXP:
       for(i=0; i<nr; i++) {
         for(j=0; j<nc; j++) {
@@ -256,7 +334,7 @@ SEXP na_omit_xts (SEXP x)
       for(i=0; i<nr; i++) {
         for(j=0; j<nc; j++) {
           ij = i + j*nr;
-          if(ISNA(real_x[ij])) {
+          if(ISNA(real_x[ij]) || ISNAN(real_x[ij])) {
             int_na_index[NA] = i+1;
             NA++;
             break;

@@ -126,7 +126,6 @@ SEXP do_merge_xts (SEXP x, SEXP y,
 
   len = nrx + nry;
 
-
   /* at present we are failing the call if the indexing is of
      mixed type.  This should probably instead simply coerce
      to REAL so as not to lose any information (at the expense
@@ -136,7 +135,6 @@ SEXP do_merge_xts (SEXP x, SEXP y,
     PROTECT(xindex = coerceVector(xindex, REALSXP)); p++;
     PROTECT(yindex = coerceVector(yindex, REALSXP)); p++;
   }
-
 
   if( TYPEOF(all) != LGLSXP )
     error("all must be a logical value of TRUE or FALSE");
@@ -181,6 +179,10 @@ SEXP do_merge_xts (SEXP x, SEXP y,
       /* RIGHT JOIN */
       yp++;
       if(right_join) i++;
+    } else
+    if(ISNA(real_xindex[ xp-1 ]) || ISNA(real_yindex[ yp-1 ])) {
+Rprintf("%f, %f\n",real_xindex[xp-1],real_yindex[yp-1]);
+      error("'NA' not allowed in 'index'");
     }
   } 
   } else
@@ -208,6 +210,10 @@ SEXP do_merge_xts (SEXP x, SEXP y,
     if( int_xindex[ xp-1 ] > int_yindex[ yp-1 ] ) {
       yp++;
       if(right_join) i++;
+    } else
+    if(real_xindex[ xp-1 ]==NA_INTEGER ||
+       real_yindex[ yp-1 ]==NA_INTEGER) {
+       error("'NA' not allowed in 'index'");
     }
   } 
   }
@@ -893,11 +899,24 @@ SEXP do_merge_xts (SEXP x, SEXP y,
       if(!right_join) i--;
     }
   }
-
-
   }
 
-  /* set Dim and DimNames */
+  /* following logic to allow for 
+     dimensionless xts objects (unsupported)
+     to be used in Ops.xts calls
+     This maps to how zoo behaves */
+  if(LOGICAL(retside)[0] &&
+     !LOGICAL(retside)[1] && 
+     isNull(getAttrib(x,R_DimSymbol))) {
+     /* retside=c(T,F) AND is.null(dim(x)) */ 
+     setAttrib(result, R_DimSymbol, R_NilValue);
+  } else 
+  if(LOGICAL(retside)[1] &&
+     !LOGICAL(retside)[0] && 
+     isNull(getAttrib(y,R_DimSymbol))) {
+     /* retside=c(F,T) AND is.null(dim(y)) */ 
+     setAttrib(result, R_DimSymbol, R_NilValue);
+  } else /* set Dim and DimNames */
   if(num_rows >= 0 && (ncx + ncy) >= 0) {
     /* DIM */
     PROTECT(attr = allocVector(INTSXP, 2));

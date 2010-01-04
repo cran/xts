@@ -104,7 +104,8 @@ export(axTicksByTime)
 export(plot.xts)
 #export(lines.xts)
 S3method(plot,xts)
-#S3method(lines,xts)
+S3method(lines,xts)
+S3method(points,xts)
 
 #export(Lag.xts, Next.xts) #, Diff.xts)
 
@@ -201,6 +202,7 @@ S3method(as.matrix,xts)
 
 # timeSeries (package:timeSeries) specific methods
 #export(xts.as.timeSeries)
+export(as.timeSeries.xts)
 S3method(as.xts,timeSeries)
 
 # its (package:its) specific methods
