@@ -14,7 +14,7 @@ mechanism of xts.  The function is unexported, though
 documented for use with xts subsetting.
 }
 \usage{
-.parseISO8601(x, start, end)
+.parseISO8601(x, start, end, tz="")
 
 .makeISO8601(x)
 }
@@ -31,6 +31,9 @@ lower constraint on range
   \item{end}{
 upper constraint of range
 }
+  \item{tz}{
+timezone (tzone) to use internally
+}
 }
 \details{
 This function replicates most of the ISO 
@@ -45,8 +48,15 @@ The basic idea is to create
 the endpoints of a range, given a string
 representation. These endpoints are aligned
 in POSIXct time to the zero second of the day
-at the beginning, and the 59th second of the 59th
+at the beginning, and the 59.9999th second of the 59th
 minute of the 23rd hour of the final day.
+
+For dates prior to the epoch (1970-01-01) the
+ending time is aligned to the 59.0000 second. This
+is due to a bug in the \R implementation of
+asPOSIXct and mktime0 at the source level. This limits
+the precision of ranges prior to 1970 to 1 minute
+granularity with the current \pkg{xts} workaround.
 }
 \value{
 A list of length two, with an entry
