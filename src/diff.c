@@ -239,7 +239,10 @@ SEXP lag_zoo (SEXP x, SEXP _k, SEXP _pad)
   int PAD = INTEGER(coerceVector(_pad,INTSXP))[0];
 
   if(k > length(x))
-    error("'k' must be less than nrow(x)");
+    error("abs(k) must be less than nrow(x)");
+
+  if(k < 0 && -1*k > length(x))
+    error("abs(k) must be less than nrow(x)");
 
   PROTECT(result = allocVector(TYPEOF(x), 
           length(x) - (PAD ? 0 : abs(k)*nc))); P++;
@@ -453,8 +456,6 @@ SEXP lag_zoo (SEXP x, SEXP _k, SEXP _pad)
   //  setAttrib(result, install("index"), getAttrib(x, install("index")));
   //} else {
     SEXP index, newindex;
-    double *newindex_real;
-    int *newindex_int;
     PROTECT(index = getAttrib(x, install("index"))); P++;
     if(IS_S4_OBJECT(index)) {
       /* should make this

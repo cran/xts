@@ -45,6 +45,7 @@ function(x=NULL,
   if(!timeBased(order.by))
     stop("order.by requires an appropriate time-based object")
 
+  #if(NROW(x) != length(order.by))
   if(NROW(x) > 0 && NROW(x) != length(order.by))
     stop("NROW(x) must match length(order.by)")
 
@@ -62,9 +63,11 @@ function(x=NULL,
     x <- as.matrix(x)
   } else x <- numeric(0)
 
+  if(!is.null(attr(order.by,"tzone")) && missing(tzone))
+    tzone <- attr(order.by, "tzone")
   index <- as.numeric(as.POSIXct(order.by))
   x <- structure(.Data=x,
-            index=structure(index,tzone=tzone),
+            index=structure(index,tzone=tzone,tclass=orderBy),
             class=c('xts','zoo'),
             .indexCLASS=orderBy,
             .indexTZ=tzone,
@@ -96,7 +99,7 @@ function(x=NULL, index, .indexCLASS=c("POSIXt","POSIXct"), tzone=Sys.getenv("TZ"
   } else x <- numeric(0)
 
   structure(.Data=x,
-            index=structure(index,tzone=tzone),
+            index=structure(index,tzone=tzone,tclass=.indexCLASS),
             .indexCLASS=.indexCLASS,.indexTZ=tzone,
             class=c('xts','zoo'), ...)
 }
@@ -190,7 +193,8 @@ function(x,...) {
   #yy <- coredata(x)
   #attr(yy, ".CLASS") <- NULL
   # using new coredata.xts method - jar
-  
+  if(length(x) == 0 && (!is.null(index(x)) && length(index(x))==0))
+    return(x)
   xx <- xts(coredata(x),
             order.by=index(x),
             .CLASS='xts',

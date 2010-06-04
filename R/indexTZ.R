@@ -23,19 +23,34 @@ indexTZ <- function(x, ...)
   UseMethod("indexTZ")
 }
 
+`indexTZ<-` <- function(x, value) {
+  UseMethod("indexTZ")
+}
+
+`indexTZ<-.xts` <- function(x, value) {
+  attr(x, ".indexTZ") <- value
+  attr(attr(x,"index"),"tzone") <- value
+  x
+}
+
 indexTZ.default <- function(x, ...) {
   attr(x, ".indexTZ")
 }
 
 indexTZ.xts <- function(x, ...)
 {
-  attr(x, ".indexTZ")
+  tzone <- attr(attr(x, "index"), "tzone")
+  if(is.null(tzone))
+    attr(x, ".indexTZ")
+  else tzone
 }
 
 check.TZ <- function(x, ...)
 {
   STZ <- as.character(Sys.getenv("TZ"))
-  if(!is.null(indexTZ(x)) && !identical(STZ, as.character(indexTZ(x))))
+  if(!is.null(indexTZ(x)) && indexTZ(x) != "" &&
+     !identical(STZ, as.character(indexTZ(x))))
     warning(paste("timezone of object (",indexTZ(x),
-                  ") is different than current timezone (",STZ,").",sep=""))
+                  ") is different than current timezone (",STZ,").",sep=""),
+           call.=FALSE)
 }
