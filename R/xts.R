@@ -45,6 +45,9 @@ function(x=NULL,
   if(!timeBased(order.by))
     stop("order.by requires an appropriate time-based object")
 
+  if(inherits(order.by, 'dates'))
+    tzone <- ""
+
   #if(NROW(x) != length(order.by))
   if(NROW(x) > 0 && NROW(x) != length(order.by))
     stop("NROW(x) must match length(order.by)")
@@ -65,6 +68,9 @@ function(x=NULL,
 
   if(!is.null(attr(order.by,"tzone")) && missing(tzone))
     tzone <- attr(order.by, "tzone")
+  if(inherits(order.by,'dates'))
+    index <- as.numeric(as.POSIXct(strptime(as.character(order.by),"(%m/%d/%y %H:%M:%S)"))) #$format
+  else
   index <- as.numeric(as.POSIXct(order.by))
   x <- structure(.Data=x,
             index=structure(index,tzone=tzone,tclass=orderBy),
@@ -125,15 +131,16 @@ function(x, match.to, error=FALSE, ...) {
       } #else rownames(x) <- NULL
     }
     attr(x,'.ROWNAMES') <- NULL
-    if(is.null(attr(x,'.RECLASS')) || attr(x,'.RECLASS')) {#should it be reclassed?
-      attr(x,'.RECLASS') <- NULL
+    #if(is.null(attr(x,'.RECLASS')) || attr(x,'.RECLASS')) {#should it be reclassed?
+    if(!is.null(attr(x,'.RECLASS')) && attr(x,'.RECLASS')) {#should it be reclassed?
+      #attr(x,'.RECLASS') <- NULL
       do.call(paste('re',oldCLASS,sep='.'),list(x))
     } else {
-      attr(x,'.RECLASS') <- NULL
+      #attr(x,'.RECLASS') <- NULL
       x
     }
   } else {
-    attr(x,'.RECLASS') <- NULL
+    #attr(x,'.RECLASS') <- NULL
     x
   }
 }
