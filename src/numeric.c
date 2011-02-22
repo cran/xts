@@ -1,7 +1,7 @@
 /*
 #   xts: eXtensible time-series 
 #
-#   Copyright (C) 2008  Jeffrey A. Ryan jeff.a.ryan @ gmail.com
+#   Copyright (C) 2010  Jeffrey A. Ryan jeff.a.ryan @ gmail.com
 #
 #   Contributions from Joshua M. Ulrich
 #
@@ -18,24 +18,15 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-
-
 #include <R.h>
 #include <Rinternals.h>
 
-SEXP coredata (SEXP x, SEXP copyAttr)
-{
-  /* copyAttr is a LGLSXP flag to indicate whether all
-     attributes are to be left intact.  This provides
-     compatability with xts, by stripping all attributes
-     if desired, without the overhead or adding then
-     removing
-  */
+SEXP coerce_vector (SEXP x, SEXP coerce_to) {
   SEXP result;
   int i, j, ncs, nrs;
   int P=0;
   PROTECT(result = allocVector(TYPEOF(x), length(x))); P++;
-  switch( TYPEOF(x)) {
+  switch(TYPEOF(x)) {
     case REALSXP:
       memcpy(REAL(result), REAL(x), length(result) * sizeof(double));
       break;
@@ -61,7 +52,10 @@ SEXP coredata (SEXP x, SEXP copyAttr)
       error("currently unsupported data type");
       break;
   }
-  if( !isNull(getAttrib(x, R_DimSymbol))) {
+  PROTECT(result = coerceVector(result, TYPEOF(coerce_to))); P++;
+
+  /*
+  if(!isNull(getAttrib(x, R_DimSymbol))) {
     setAttrib(result, R_DimSymbol, getAttrib(x, R_DimSymbol));
     if( !isNull(getAttrib(x, R_DimNamesSymbol)) ) {  
       setAttrib(result, R_DimNamesSymbol, getAttrib(x,R_DimNamesSymbol));
@@ -69,19 +63,15 @@ SEXP coredata (SEXP x, SEXP copyAttr)
   } else {
     setAttrib(result, R_NamesSymbol, getAttrib(x, R_NamesSymbol));
   }
-  if( asLogical(copyAttr)) {
+  if(LOGICAL(copyAttr)[0]) {
     copyMostAttrib(x,result);
     setAttrib(result, install("class"), getAttrib(x, install("oclass")));
   }
   setAttrib(result, install("index"),     R_NilValue);
   setAttrib(result, install("oclass"),    R_NilValue);
   setAttrib(result, install("frequency"), R_NilValue);
+  */
 
   UNPROTECT(P);
   return result;
 }
-
-SEXP coredata_xts(SEXP x) {
-  return coredata(x, ScalarLogical(0));
-}
-

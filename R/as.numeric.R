@@ -22,8 +22,8 @@
 as.numeric.xts <- function(x, drop=TRUE, ...)
 {
   if(drop)
-    return(as.numeric(unclass(x)))
-  .xts(matrix(as.numeric(unclass(x)),nc=NCOL(x)), .index(x))
+    return(as.numeric(coredata(x)))
+  .xts(matrix(as.numeric(coredata(x)),nc=NCOL(x)), .index(x))
 }
 
 as.xts.numeric <-
@@ -43,6 +43,8 @@ function(x,order.by,dateFormat="POSIXct",frequency=NULL,...) {
 
 re.numeric <-
 function(x,...) {
+  if( !is.null(dim(x)))
+    return(as.matrix(x))
   # jmu
   y <- as.numeric(x,...)
   names(y) <- index(x)
@@ -52,8 +54,8 @@ function(x,...) {
 as.integer.xts <- function(x, drop=TRUE, ...)
 {
   if(drop)
-    return(as.integer(unclass(x)))
-  .xts(matrix(as.integer(unclass(x)),nc=NCOL(x)), .index(x))
+    return(as.integer(coredata(x)))
+  .xts(matrix(as.integer(coredata(x)),nc=NCOL(x)), .index(x))
 }
 
 as.xts.integer <-
@@ -73,6 +75,8 @@ function(x,order.by,dateFormat="POSIXct",frequency=NULL,...) {
 
 re.integer <-
 function(x,...) {
+  if( !is.null(dim(x)))
+    return(as.matrix(x))
   # jmu
   y <- as.integer(x,...)
   names(y) <- index(x)
@@ -82,8 +86,8 @@ function(x,...) {
 as.double.xts <- function(x, drop=TRUE, ...)
 {
   if(drop)
-    return(as.double(unclass(x)))
-  .xts(matrix(as.double(unclass(x)),nc=NCOL(x)), .index(x))
+    return(as.double(coredata(x)))
+  .xts(matrix(as.double(coredata(x)),nc=NCOL(x)), .index(x))
 }
 
 as.xts.double <-
@@ -103,6 +107,8 @@ function(x,order.by,dateFormat="POSIXct",frequency=NULL,...) {
 
 re.double <-
 function(x,...) {
+  if( !is.null(dim(x)))
+    return(as.matrix(x))
   # jmu
   y <- as.double(x,...)
   names(y) <- index(x)
@@ -112,8 +118,8 @@ function(x,...) {
 as.complex.xts <- function(x, drop=TRUE, ...)
 {
   if(drop)
-    return(as.complex(unclass(x)))
-  .xts(matrix(as.complex(unclass(x)),nc=NCOL(x)), .index(x))
+    return(as.complex(coredata(x)))
+  .xts(matrix(as.complex(coredata(x)),nc=NCOL(x)), .index(x))
 }
 
 as.xts.complex <-
@@ -133,6 +139,8 @@ function(x,order.by,dateFormat="POSIXct",frequency=NULL,...) {
 
 re.complex <-
 function(x,...) {
+  if( !is.null(dim(x)))
+    return(as.matrix(x))
   # jmu
   y <- as.complex(x,...)
   names(y) <- index(x)
@@ -142,8 +150,8 @@ function(x,...) {
 as.logical.xts <- function(x, drop=TRUE, ...)
 {
   if(drop)
-    return(as.logical(unclass(x)))
-  .xts(matrix(as.logical(unclass(x)),nc=NCOL(x)), .index(x))
+    return(as.logical(coredata(x)))
+  .xts(matrix(as.logical(coredata(x)),nc=NCOL(x)), .index(x))
 }
 
 as.xts.logical <-
@@ -163,6 +171,8 @@ function(x,order.by,dateFormat="POSIXct",frequency=NULL,...) {
 
 re.logical <-
 function(x,...) {
+  if( !is.null(dim(x)))
+    return(as.matrix(x))
   # jmu
   y <- as.logical(x,...)
   names(y) <- index(x)

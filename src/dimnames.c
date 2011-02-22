@@ -1,7 +1,7 @@
-#
+/*
 #   xts: eXtensible time-series 
 #
-#   Copyright (C) 2008  Jeffrey A. Ryan jeff.a.ryan @ gmail.com
+#   Copyright (C) 2010  Jeffrey A. Ryan jeff.a.ryan @ gmail.com
 #
 #   Contributions from Joshua M. Ulrich
 #
@@ -17,37 +17,10 @@
 #
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+#include <R.h>
+#include <Rinternals.h>
 
-
-# functions for its <--> xts conversions
-
-`re.its` <-
-function(x, ...) {
-  stopifnot("package:its" %in% search() || require("its",quietly=TRUE))
-  xx <- coredata(x)
-  dates <- index(x)
-  its(xx,dates=dates,...)
+SEXP dimnames_zoo (SEXP x) {
+  return(getAttrib(x, R_DimNamesSymbol));
 }
-
-`as.xts.its` <-
-function(x,..., .RECLASS=FALSE) {
-  if(.RECLASS) {
-  xx <- xts(x@.Data,
-            order.by=x@dates,
-            .CLASS='its',
-            ...)
-  } else {
-  xx <- xts(x@.Data,
-            order.by=x@dates,
-            ...)
-  }
-  xx
-}
-
-`xts.as.its` <-
-function(x,...) {
-  if(!is.xts(x)) stop('not an "xts" object')
-  if(!inherits(class(index(x)),'POSIXct')) indexClass(x) <- "POSIXct"
-  re.its(x,...)
-}
-

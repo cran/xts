@@ -31,34 +31,39 @@
 `.subset.xts` <- `[.xts` <-
 function(x, i, j, drop = FALSE, which.i=FALSE,...) 
 {
-    #check.TZ(x)
-    #original.cols <- NCOL(x)
-    #original.attr <- xtsAttributes(x)
+    USE_EXTRACT <- FALSE
+    if(is.null(dim(x))) {
+      nr <- length(x)
+      nc <- 1L
+    } else {
+      nr <- nrow(x)
+      nc <- ncol(x)
+    }
     
-    if(missing(i)) {
-      i <- 1:NROW(x)
-    } else
+    if(!missing(i)) {
     # test for negative subscripting in i
-    if (!missing(i) && is.numeric(i)) {
+    if (is.numeric(i)) {
       #if(any(i < 0)) {
       if(.Call("any_negative", i, PACKAGE="xts")) {
         if(!all(i <= 0))
           stop('only zeros may be mixed with negative subscripts')
-        i <- (1:NROW(x))[i]
+        i <- (1:nr)[i]
       }
-      if(max(i) > NROW(x))
+      if(max(i) > nr)
         stop('subscript out of bounds')
+      #i <- i[-which(i == 0)]
     } else
     if(inherits(i, "AsIs") && is.character(i)) {
       i <- MATCH(i, format(index(x)))
     } else
     if (timeBased(i)) { # || (inherits(i, "AsIs") && is.character(i))) {
       if(inherits(i, "POSIXct")) {
-        #i <- match(i, .index(x))
         i <- which(!is.na(match(.index(x), i)))
-      } else {
-        #i <- match(as.POSIXct(as.character(i)), .index(x))
+      } else if(inherits(i, "Date")) {
         i <- which(!is.na(match(.index(x), as.POSIXct(as.character(i)))))
+      } else {
+        # force all other time classes to be POSIXct
+        i <- which(!is.na(match(.index(x), as.POSIXct(i))))
       }
       i[is.na(i)] <- 0
     } else 
@@ -68,6 +73,7 @@ function(x, i, j, drop = FALSE, which.i=FALSE,...)
     if (is.character(i)) {
       # is i of the format T/T?
       if(length(i) == 1 && !identical(integer(),grep("^T.*?/T",i[1]))) {
+      #if(grepl("^T.*?/T",i[1]) && length(i) == 1) {
         i <- gsub("T|:","",i)
         i <- strsplit(i, "/")[[1]]
         i <- .makeISO8601TT(x, i[1],i[2])
@@ -77,11 +83,10 @@ function(x, i, j, drop = FALSE, which.i=FALSE,...)
 
       i.tmp <- NULL
       tz <- as.character(indexTZ(x)) # ideally this moves to attr(index,"tzone")
+      i_len <- length(i)
 
       for(ii in i) {
-        #adjusted.times <- .parseISO8601(ii, first(.index(x)), last(.index(x)))
-        #`[.POSIXct` <- function(x, ...) { .Class="Matrix"; NextMethod("[") }
-        adjusted.times <- .parseISO8601(ii, .index(x)[1], .index(x)[NROW(x)], tz=tz)
+        adjusted.times <- .parseISO8601(ii, .index(x)[1], .index(x)[nr], tz=tz)
         if(length(adjusted.times) > 1) {
           firstlast <- c(seq.int(binsearch(adjusted.times$first.time, .index(x),  TRUE),
                                  binsearch(adjusted.times$last.time,  .index(x), FALSE))
@@ -91,20 +96,10 @@ function(x, i, j, drop = FALSE, which.i=FALSE,...)
         }
       }
       i <- i.tmp
-      #if(is.null(i)) i <- NA
-    }
 
-    # test for negative subscripting in j
-    if (!missing(j) && is.numeric(j)) { # && any(j < 0)) {
-      if(any(na.omit(j) < 0)) {
-        if(!all(na.omit(j) < 0))
-          stop('only zeros may be mixed with negative subscripts')
-        j <- (1:NCOL(x))[j]
-      }
-      if(max(j,na.rm=TRUE) > NCOL(x))
-        stop('subscript out of bounds')
+      if(i_len == 1L)
+        USE_EXTRACT <- TRUE
     }
-
   
     if(!isOrdered(i,strictly=FALSE)) {
       i <- sort(i)
@@ -114,36 +109,75 @@ function(x, i, j, drop = FALSE, which.i=FALSE,...)
     if(!is.na(zero.index))
       i <- i[ -zero.index ]
 
+    if(length(i) <= 0 && USE_EXTRACT) 
+      USE_EXTRACT <- FALSE
+
     if(which.i)
       return(i)
 
+    } # if(!missing(i)) { end
+
     if (missing(j)) {
+      if(missing(i))
+        i <- seq_len(nr)
+
       if(length(x)==0) {
         x.tmp <- .xts(rep(NA,length(i)), .index(x)[i])
         return((colnames(x.tmp) <- colnames(x)))
       } else {
-        return(.Call('_do_subset_xts', 
-                     x, as.integer(i),
-                     as.integer(1:NCOL(x)), 
-                     drop, PACKAGE='xts'))
-      }
-    }
-    else {
-        if(is.logical(j)) {
-          if(length(j) == 1) {
-            j <- (1:NCOL(x))[rep(j, NCOL(x))]
-          } else j <- (1:NCOL(x))[j]
+        if(USE_EXTRACT) {
+          return(.Call('extract_col', 
+                       x, as.integer(1:nc),
+                       drop,
+                       as.integer(i[1]), as.integer(i[length(i)]), PACKAGE="xts"))
+        } else {
+          return(.Call('_do_subset_xts', 
+                       x, as.integer(i),
+                       as.integer(1:nc), 
+                       drop, PACKAGE='xts'))
         }
-        j <- sapply(j, function(xx) {
-                         if(is.character(xx)) {
-                           jtmp <- which(xx==colnames(x))
-                           if(length(jtmp))
-                             jtmp
-                         } else xx
-                       })
-        j <- unlist(j) 
-        return(.Call('_do_subset_xts', x, as.integer(i), as.integer(j), drop, PACKAGE='xts'))
-   } 
+      }
+    } else
+    # test for negative subscripting in j
+    if (is.numeric(j)) {
+      if(min(j,na.rm=TRUE) < 0) {
+        if(max(j,na.rm=TRUE) > 0)
+          stop('only zeros may be mixed with negative subscripts')
+        j <- (1:nc)[j]
+      }
+      if(max(j,na.rm=TRUE) > nc)
+        stop('subscript out of bounds')
+    } else
+    if(is.logical(j)) {
+      if(length(j) == 1) {
+        j <- (1:nc)[rep(j, nc)]
+      }
+      else if (length(j) > nc) {
+          stop("(subscript) logical subscript too long")
+      } else j <- (1:nc)[j]
+    } else
+    if(is.character(j)) {
+      j <- match(j, colnames(x), nomatch=0L)
+    }
+
+    j0 <- which(!as.logical(j))
+    if(length(j0)) 
+      j <- j[-j0]
+    if(length(j) == 0 || (length(j)==1 && j==0)) {
+      if(missing(i))
+        i <- seq_len(nr)
+      return(.xts(coredata(x)[i,j,drop=FALSE], index=.index(x)[i],
+                  .indexCLASS=indexClass(x), .indexTZ=indexTZ(x)))
+    } 
+    if(missing(i))
+      return(.Call("extract_col", x, as.integer(j), drop, 1, nr, PACKAGE='xts'))
+    if(USE_EXTRACT) {
+          return(.Call('extract_col', 
+                       x, as.integer(j),
+                       drop,
+                       as.integer(i[1]), as.integer(i[length(i)]), PACKAGE='xts'))
+    } else
+    return(.Call('_do_subset_xts', x, as.integer(i), as.integer(j), drop, PACKAGE='xts'))
 }
 
 # Replacement method for xts objects
@@ -157,59 +191,7 @@ function(x, i, j, drop = FALSE, which.i=FALSE,...)
 function(x, i, j, value) 
 {
     if (!missing(i)) {
-
-    if (timeBased(i)) { # || (inherits(i, "AsIs") && is.character(i))) {
-      if(inherits(i, "POSIXct")) {
-        #i <- match(i, .index(x))
-        i <- which(!is.na(match(.index(x), i)))
-      } else {
-        #i <- match(as.POSIXct(as.character(i)), .index(x))
-        i <- which(!is.na(match(.index(x), as.POSIXct(as.character(i)))))
-      }
-      i[is.na(i)] <- 0
-    } else 
-    if(is.logical(i)) {
-      i <- which(i) #(1:NROW(x))[rep(i,length.out=NROW(x))]
-    } else
-    if (is.character(i)) {
-      # enables subsetting by date style strings
-      # must be able to process - and then allow for operations???
-
-      i.tmp <- NULL
-      for(ii in i) {
-        if(!identical(grep("(::)|/",ii),integer(0))) {
-          tBR <- timeBasedRange(ii)
-          
-          # the first index value to be found
-          if(is.na(tBR[1])) {
-            first.time <- .index(x)[1]
-          } else first.time <- tBR[1]
-
-          # the last index value ot be found
-          if(is.na(tBR[2])) {
-            last.time  <- .index(x)[NROW(x)]
-          } else last.time <- tBR[2]
-
-        } else {
-          # if single date is given - get start and end points if resolution of
-          # series is greater than the time specified
-          dates <- paste(ii,ii,sep='/')
-          tBR <- timeBasedRange(dates)
-          first.time <- tBR[1]
-          last.time  <- tBR[2]
-        }      
-        
-        i.tmp <- c(i.tmp,
-                   seq.int(binsearch(first.time, .index(x),  TRUE),
-                           binsearch(last.time,  .index(x), FALSE))
-                  )
-      }
-      i <- i.tmp
-      # .subset is picky, 0's in the 'i' position cause failures -- is this still nec? -jar
-      zero.index <- binsearch(0, i, NULL)
-      if(!is.na(zero.index))
-        i <- i[ -zero.index ]
-    }
+      i <- x[i, which.i=TRUE]
     }
     .Class <- "matrix"
     NextMethod(.Generic)

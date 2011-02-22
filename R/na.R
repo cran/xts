@@ -22,7 +22,7 @@
 na.omit.xts <- function(object, ...) {
   xx <- .Call('na_omit_xts', object, PACKAGE="xts")
   if(length(xx)==0)
-    return(xts(,))
+    return(structure(xts(,),.Dim=c(0,NCOL(object))))
   naa <- attr(xx,'na.action')
   if(length(naa) == 0)
     return(xx)
@@ -92,12 +92,19 @@ na.replace <- function(x) {
   rbind(x,tmp)
 }
 
-na.locf.xts <- function(object, na.rm=FALSE, fromLast=FALSE,...) {
+na.locf.xts <- function(object, na.rm=FALSE, fromLast=FALSE, maxgap=Inf, ...) {
     stopifnot(is.xts(object))
+    maxgap <- min(maxgap, NROW(object))
+    if(length(object) == 0)
+      return(object)
     x <- if(dim(object)[2] > 1) {
-      .xts(apply(object, 2, function(x) .Call('na_locf', x, fromLast, PACKAGE='xts')),
-           .index(object), .indexCLASS=indexClass(object))
-    } else .Call("na_locf", object, fromLast, PACKAGE="xts")
+      do.call(cbind.xts, lapply(1:NCOL(object), 
+                            function(n) {
+                              .Call('na_locf', object[,n], fromLast, maxgap, PACKAGE='xts')
+                            } ))
+      #.xts(apply(object, 2, function(x) .Call('na_locf', x, fromLast, maxgap, PACKAGE='xts')),
+      #     .index(object), tzone=indexTZ(object), .indexCLASS=indexClass(object))
+    } else .Call("na_locf", object, fromLast, maxgap, PACKAGE="xts")
     if(na.rm) {
       return(structure(na.omit(x),na.action=NULL))
     } else x
