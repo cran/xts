@@ -335,7 +335,7 @@ SEXP lag_zoo (SEXP x, SEXP _k, SEXP _pad)
         if(PAD) {
           for(i = 0; i < k; i++)
             SET_STRING_ELT(result, i+(j*nrr), NA_STRING);
-          for(i = 0; i < nrr; i++) 
+          for(; i < nrr; i++) 
             SET_STRING_ELT(result, k+i+j*nrr, STRING_ELT(x, i+j*nrr));
         } else {
           for(i = 0; i < nrr; i++) 
@@ -518,5 +518,10 @@ SEXP lag_zoo (SEXP x, SEXP _k, SEXP _pad)
 
 SEXP lag_xts (SEXP x, SEXP _k, SEXP _pad) {
   int k = INTEGER(_k)[0]*-1; /* change zoo default negative handling */
-  return lag_zoo (x, ScalarInteger(k), _pad);
+  return zoo_lag (x, ScalarInteger(k), _pad);
+}
+
+SEXP lagts_xts (SEXP x, SEXP _k, SEXP _pad) {
+  int k = INTEGER(_k)[0]*-1; /* change zoo default negative handling */
+  return zoo_lag (x, ScalarInteger(k), _pad);
 }

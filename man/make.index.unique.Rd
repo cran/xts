@@ -1,6 +1,8 @@
 \name{make.index.unique}
 \alias{make.index.unique}
 \alias{make.time.unique}
+\alias{is.index.unique}
+\alias{is.time.unique}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Force Time Values To Be Unique
@@ -15,9 +17,9 @@ identical time by \code{eps} over the previous (possibly also
 advanced) value.
 }
 \usage{
-make.index.unique(x, eps = 1e-05, ...)
+make.index.unique(x, eps = 1e-06, drop=FALSE, fromLast=FALSE, ...)
 
-make.time.unique(x, eps = 1e-05, ...)
+make.time.unique(x, eps = 1e-06, drop=FALSE, fromLast=FALSE, ...)
 }
 \arguments{
   \item{x}{
@@ -25,6 +27,15 @@ An xts object, or POSIXct vector.
 }
   \item{eps}{
 value to add to force uniqueness.
+}
+  \item{drop}{
+drop duplicates instead of adjusting by \code{eps}
+}
+  \item{fromLast}{
+if drop=TRUE, fromLast controls which duplicated times
+are dropped. If fromLast=FALSE, the earliest observation
+with an identical timestamp is kept with subsequent observations
+dropped.
 }
   \item{\dots}{
 unused
@@ -44,7 +55,7 @@ Jeffrey A. Ryan
 Incoming values must be pre-sorted, and no check is done to
 make sure that this is the case.  If the index values are
 of storage.mode \sQuote{integer}, they will be coerced
-to \sQuote{double}.
+to \sQuote{double} if drop=FALSE.
 }
 \seealso{
 \code{\link{align.time}}

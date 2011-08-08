@@ -24,7 +24,7 @@
                        major.ticks='auto', minor.ticks=TRUE, 
                        major.format=TRUE,
                        bar.col='grey', candle.col='white',
-                       ann=TRUE, axes=TRUE, 
+                       ann=TRUE, axes=TRUE,
                        ...) {
   series.title <- deparse(substitute(x))
 
@@ -55,15 +55,15 @@
 
   dots <- list(...)
 
-  if('axes' %in% names(dots)) {
-    if(!dots$axes) axes <- FALSE
-  } else axes <- TRUE
+#  if('axes' %in% names(dots)) {
+#    if(!dots$axes) axes <- FALSE
+#  } else axes <- TRUE
 
   if(axes) {
     if(minor.ticks)
-      axis(1, at=xycoords$x, labels=FALSE, col='#BBBBBB')
-    axis(1, at=xycoords$x[ep], labels=names(ep), las=1, lwd=1, mgp=c(3,2,0)) 
-    axis(2)
+      axis(1, at=xycoords$x, labels=FALSE, col='#BBBBBB', ...)
+    axis(1, at=xycoords$x[ep], labels=names(ep), las=1, lwd=1, mgp=c(3,2,0),...) 
+    axis(2, ...)
   }
   
   box()

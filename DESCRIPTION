@@ -1,10 +1,11 @@
 Package: xts
 Type: Package
-Title: Extensible Time Series
-Version: 0.8-0
-Date: 2011-02-22
+Title: eXtensible Time Series
+Version: 0.8-2
+Date: 2011-08-08
 Author: Jeffrey A. Ryan, Josh M. Ulrich
-Depends: zoo
+Depends: zoo (>= 1.7-2)
+LinkingTo: zoo (>= 1.7.2)
 Suggests: timeSeries,timeDate,tseries,its,chron,fts,tis
 LazyLoad: yes
 Maintainer: Jeffrey A. Ryan <jeff.a.ryan@gmail.com>
@@ -15,6 +16,6 @@ Description: Provide for uniform handling of R's different time-based
         interoperability.
 License: GPL-2
 URL: http://r-forge.r-project.org/projects/xts/
-Packaged: 2011-02-22 16:37:28 UTC; jryan
+Packaged: 2011-08-09 02:22:12 UTC; jryan
 Repository: CRAN
-Date/Publication: 2011-02-22 17:13:18
+Date/Publication: 2011-08-09 04:59:51
