@@ -1,4 +1,4 @@
-99710d52c1b7b68a9bb8bcc61fd537a8 *DESCRIPTION
+06304bcd98e33f9da9c8c88be32844da *DESCRIPTION
 23e29749ca8d63e8ab2da0284a7401dd *DEVELOPMENT-NOTES
 85c6058c895a53646d21e194e651b39d *NAMESPACE
 72d9f3a163d2edad2cbd26829b4a6faf *NEWS
@@ -20,7 +20,7 @@ b207bfb795a4e70b4a1a2f849630f586 *R/endpoints.R
 77eec43f3cad4e7f8e584a12f26e6c5b *R/fillIndex.R
 bf61af7b291bbe6530088893bf1261e5 *R/first.R
 3343b605da19dde775bfba35e247e77f *R/fts.R
-57ffe53810d809f3ba35564470aaea1b *R/index.R
+8792721f400b725add26458fafcd7cd2 *R/index.R
 5dec683bc54abe21a352d14f7bfe11d9 *R/indexClass.R
 012811c824a4e5410d2072528a2c71e7 *R/indexFormat.R
 82008195a0f2001e649110f4b9f0d720 *R/indexTZ.R
@@ -71,7 +71,7 @@ ea2def2e4b08a8a520eb0f8989123485 *inst/api_example/README
 1327b4ae2c01cbc5ff3c1b3a27287218 *inst/api_example/man/linkXTS-package.Rd
 1b931fb50bd92ddeb192b91cb3e05847 *inst/api_example/src/checkOrder.c
 2f98b7a787451ce6923c33aa495a8d0c *inst/doc/xts.Rnw
-09b8e37032e229f75b2fc07f04c22b68 *inst/doc/xts.pdf
+d2dc2c2748c022b3a2e711c3a64279d5 *inst/doc/xts.pdf
 5bac555b3ee0bd24c2a3c387b5b8e86c *inst/include/xts.h
 e325fbd6a1e704d86c4e8ef07c13ae14 *inst/include/xts_stubs.c
 c39b9cffc7032b87c9ec17d4a847edfa *inst/unitTests/Makefile
