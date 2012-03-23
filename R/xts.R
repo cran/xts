@@ -47,12 +47,16 @@ function(x=NULL,
 
   if(inherits(order.by, 'dates'))
     tzone <- ""
-
+  
   #if(NROW(x) != length(order.by))
   if(NROW(x) > 0 && NROW(x) != length(order.by))
     stop("NROW(x) must match length(order.by)")
 
   orderBy <- class(order.by)
+  if(inherits(order.by, 'Date') && !missing(tzone))
+    # convert to GMT POSIXct if specified
+    order.by <- .POSIXct(unclass(order.by)*86400, tz=tzone)
+
 
   if(!is.null(x) && !isOrdered(order.by, strictly=!unique) ) {
     indx <- order(order.by)
@@ -79,7 +83,9 @@ function(x=NULL,
             index=structure(index,tzone=tzone,tclass=orderBy),
             class=c('xts','zoo'),
             .indexCLASS=orderBy,
+            tclass=orderBy,
             .indexTZ=tzone,
+            tzone=tzone,
             ...)
   if(!is.null(attributes(x)$dimnames[[1]]))
     # this is very slow if user adds rownames, but maybe that is deserved :)
@@ -88,11 +94,12 @@ function(x=NULL,
 }
 
 `.xts` <-
-function(x=NULL, index, .indexCLASS=c("POSIXt","POSIXct"), tzone=Sys.getenv("TZ"),
-        check=TRUE, unique=FALSE, ...) {
+function(x=NULL, index, tclass=c("POSIXt","POSIXct"),
+         tzone=Sys.getenv("TZ"),
+         check=TRUE, unique=FALSE, .indexCLASS=tclass, ...) {
   if(check) {
     if( !isOrdered(index, increasing=TRUE, strictly=unique) )
-      stop('index is not in',ifelse(unique, 'strictly', ''),'increasing order')
+      stop('index is not in ',ifelse(unique, 'strictly', ''),' increasing order')
   }
   if(!is.numeric(index) && timeBased(index))
     index <- as.numeric(as.POSIXct(index))
@@ -110,6 +117,7 @@ function(x=NULL, index, .indexCLASS=c("POSIXt","POSIXct"), tzone=Sys.getenv("TZ"
   structure(.Data=x,
             index=structure(index,tzone=tzone,tclass=.indexCLASS),
             .indexCLASS=.indexCLASS,.indexTZ=tzone,
+            tclass=.indexCLASS,tzone=tzone,
             class=c('xts','zoo'), ...)
 }
 
@@ -135,7 +143,7 @@ function(x, match.to, error=FALSE, ...) {
     }
     attr(x,'.ROWNAMES') <- NULL
     #if(is.null(attr(x,'.RECLASS')) || attr(x,'.RECLASS')) {#should it be reclassed?
-    if(!is.null(attr(x,'.RECLASS')) && attr(x,'.RECLASS')) {#should it be reclassed?
+    if(isTRUE(attr(x,'.RECLASS'))) {#should it be reclassed?
       #attr(x,'.RECLASS') <- NULL
       do.call(paste('re',oldCLASS,sep='.'),list(x))
     } else {
