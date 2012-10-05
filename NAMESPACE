@@ -4,6 +4,7 @@ useDynLib(xts)
 # imports
 importFrom(stats, lag)
 importFrom(stats, as.ts)
+#importFrom(stats, sd)
 
 export(.parseISO8601)
 
@@ -52,6 +53,7 @@ export('xcoredata<-')
 export(.index)
 export('.index<-')
 export(xtsible)
+export(as.environment.xts)
 export(use.xts, try.xts)
 export(Reclass, use.reclass)
 export(reclass)
@@ -139,6 +141,11 @@ S3method(make.index.unique, numeric)
 S3method(make.index.unique, POSIXct)
 S3method(is.time.unique, xts)
 S3method(is.time.unique, zoo)
+
+#S3method(mean,xts)
+#S3method(sd,xts)
+
+#S3method(rollapply,xts)
 
 # xts methods
 importFrom(zoo,coredata)

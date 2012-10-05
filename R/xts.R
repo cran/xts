@@ -60,8 +60,8 @@ function(x=NULL,
 
   if(!is.null(x) && !isOrdered(order.by, strictly=!unique) ) {
     indx <- order(order.by)
-    if(NCOL(x) > 1 || is.matrix(x)) {
-      x <- x[indx,]
+    if(NCOL(x) > 1 || is.matrix(x) || is.data.frame(x)) {
+      x <- x[indx,,drop=FALSE]
     } else x <- x[indx]
     order.by <- order.by[indx]
   }
@@ -129,7 +129,7 @@ function(x, match.to, error=FALSE, ...) {
         stop('incompatible match.to attibutes')
       } else return(x)
 
-    if(!is.xts(x)) x <- .xts(coredata(x),.index(match.to), .indexCLASS=indexClass(match.to))
+    if(!is.xts(x)) x <- .xts(coredata(x),.index(match.to), .indexCLASS=indexClass(match.to), tzone=indexTZ(match.to))
     CLASS(x) <- CLASS(match.to)
     xtsAttributes(x) <- xtsAttributes(match.to)
   }
