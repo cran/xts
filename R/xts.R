@@ -47,15 +47,22 @@ function(x=NULL,
 
   if(inherits(order.by, 'dates'))
     tzone <- ""
+
+  if(inherits(order.by, 'Date')) {
+    if(!missing(tzone))
+      warning(paste(sQuote('tzone'),"setting ignored for Date indexes"))
+    tzone <- "UTC"
+  }
   
   #if(NROW(x) != length(order.by))
   if(NROW(x) > 0 && NROW(x) != length(order.by))
     stop("NROW(x) must match length(order.by)")
 
   orderBy <- class(order.by)
-  if(inherits(order.by, 'Date') && !missing(tzone))
+  if(inherits(order.by, 'Date')) { 
     # convert to GMT POSIXct if specified
     order.by <- .POSIXct(unclass(order.by)*86400, tz=tzone)
+  }
 
 
   if(!is.null(x) && !isOrdered(order.by, strictly=!unique) ) {
