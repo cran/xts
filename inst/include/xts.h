@@ -18,6 +18,9 @@ as the full xts software, GPL3.
 #ifndef _XTS
 #define _XTS
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
 INTERNAL SYMBOLS
@@ -62,7 +65,7 @@ SEXP do_xtsCoreAttributes(SEXP x);          /* xtsCoreAttributes xts-specific at
                                                CLASS, .indexFORMAT, .indexCLASS & class */
 SEXP coredata(SEXP x);
 SEXP coredata_xts(SEXP x);
-SEXP add_class(SEXP x, SEXP class);
+SEXP add_class(SEXP x, SEXP klass);
 SEXP lagXts(SEXP x, SEXP k, SEXP pad);
 SEXP do_is_ordered(SEXP x, SEXP increasing, SEXP strictly);
 SEXP mergeXts(SEXP args);
@@ -83,3 +86,7 @@ void copy_xtsCoreAttributes(SEXP x, SEXP y);// internal only
 int isXts(SEXP x);                          // is.xts analogue
 int firstNonNA(SEXP x);
 #endif /* _XTS */
+
+#ifdef __cplusplus
+}
+#endif
