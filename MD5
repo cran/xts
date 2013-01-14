@@ -1,4 +1,4 @@
-c9cafd0e12cb0d76bbc96e2e1e8095b6 *DESCRIPTION
+f496fa43722f472ab298cb47cc68c131 *DESCRIPTION
 23e29749ca8d63e8ab2da0284a7401dd *DEVELOPMENT-NOTES
 5f955296dcee18dc3fef8b86e2f68b20 *NAMESPACE
 72d9f3a163d2edad2cbd26829b4a6faf *NEWS
@@ -71,13 +71,11 @@ df23f6d544fca7b695962d1f4421bb99 *inst/api_example/README
 09118e96879feba050a17474ceff8a8d *inst/api_example/man/checkOrder.Rd
 e24ef2161cbc80e1297fe776762ba86d *inst/api_example/man/linkXTS-package.Rd
 c0648d7cd58a619e37191ce4f80c6e9f *inst/api_example/src/checkOrder.c
-93af6d1b4bbd6466a5e844a40b15b995 *inst/doc/xts-faq.R
-84d1fac686bcdb8857423e180fe9adc1 *inst/doc/xts-faq.pdf
-167f58e0af6de478e9d4b75f83beadeb *inst/doc/xts.R
+6284ae64ddb675b2bf1f78db213e7b9a *inst/doc/xts-faq.pdf
 2f98b7a787451ce6923c33aa495a8d0c *inst/doc/xts.Rnw
-2e75ce64e0cb74debf9ba82271d7bf41 *inst/doc/xts.pdf
-c9dc36a04df56190fd99a80c689145e1 *inst/include/xts.h
-26ff2733f5819009f6ed67c738d7473f *inst/include/xtsAPI.h
+b058c717b6a812e6678a87f2e2e6f73f *inst/doc/xts.pdf
+9c85521bb2881a6d401ebdafc98d4689 *inst/include/xts.h
+563609e63ef302727fed87aa13c42735 *inst/include/xtsAPI.h
 fb8b821627015068f6c24f22e183728a *inst/include/xts_stubs.c
 c39b9cffc7032b87c9ec17d4a847edfa *inst/unitTests/Makefile
 d41d8cd98f00b204e9800998ecf8427e *inst/unitTests/runit.Ops.R
@@ -139,7 +137,7 @@ a2c2c82f39980a7ff9aa56bc644602b0 *src/add_class.c
 56658c8c01e89fbe5a9358b3c3072773 *src/coredata.c
 cea88d1bba6bfa43c56dcdcade7f2f0d *src/diff.c
 fd14e0c8abb1f8bbb2b076634f60ce48 *src/dimnames.c
-8ddb164264d8f56fad0d1a264d86272b *src/endpoints.c
+9eb0c60b3ea9ef267c5a0c659579a98b *src/endpoints.c
 69ee3e19112972ee6fc3b1dec99379d4 *src/extract_col.c
 b15737400aadbe228746cca32ddcfac7 *src/init.c
 ff655130478ffdb0404dcdf22e7dd1bf *src/isOrdered.c
