@@ -81,6 +81,7 @@ rollapply.xts <- function(data, width, FUN, ..., by=1, by.column=TRUE,
     #xx <- sapply(1:NROW(e), function(i) FUN(data[e[i,],],...))
     ##xx <- sapply(ind, function(i) FUN(data[(i-width+1):i,],...))
     xx <- sapply(ind, function(i) FUN(.subset_xts(data,(i-width+1):i),...))
+    if(!is.null(dim(xx))) xx <- t(xx)
     res <- xts(xx, tt, if (by == 1) attr(data, "frequency"))
   } else if( by.column ) {
     res <- xts( sapply( 1:NCOL(data), function(j)
@@ -95,13 +96,14 @@ rollapply.xts <- function(data, width, FUN, ..., by=1, by.column=TRUE,
     if(!is.null(dim(xx))) xx <- t(xx)
     res <- xts(xx, tt, if (by == 1) attr(data, "frequency"))
   }
-  if( na.pad ) {
-    tmp <- merge(res, xts(,idx, attr(data, "frequency")))
-    if(is.null(colnames(res))) {
-      colnames(tmp) <- colnames(res)
-    }
-    res <- tmp
+  
+  ix <- index(data) %in% index(res)
+  tmp <- merge(res, xts(,idx, attr(data, "frequency")))
+  if(is.null(colnames(res))) {
+    colnames(tmp) <- colnames(res)
   }
+  res <- na.fill(tmp, fill, ix)
+
   if( by.column && !is.null(dim(data)) ) {
     colnames(res) <- colnames(data)
   }

@@ -34,8 +34,8 @@ function(x, i, j, drop = FALSE, which.i=FALSE,...)
     USE_EXTRACT <- FALSE # initialize to FALSE
     if(is.null(dim(x))) {
       nr <- length(x)
-      if(nr==0) 
-        return( .xts(rep(NA,length(i)), .index(x)[i], .indexCLASS=indexClass(x)) )
+      if(nr==0)
+        return( xts(rep(NA,length(index(x))), index(x))[i] )
       nc <- 1L
     } else {
       nr <- nrow(x)

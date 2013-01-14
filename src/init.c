@@ -1,9 +1,9 @@
 /*
 #   xts: eXtensible time-series 
 #
-#   Copyright (C) 2008  Jeffrey A. Ryan jeff.a.ryan @ gmail.com
+#   Copyright (C) 2008 - 2013  Jeffrey A. Ryan jeff.a.ryan @ gmail.com
 #
-#   Contributions from Joshua M. Ulrich
+#   Contributions from Joshua M. Ulrich and Dirk Eddelbuettel
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -62,14 +62,19 @@ void R_init_xts(DllInfo *info)
 
   /* used by external packages linking to internal xts code from C */
   R_RegisterCCallable("xts","do_is_ordered",(DL_FUNC) &do_is_ordered);
-  /*R_RegisterCCallable("xts","coredata",     (DL_FUNC) &coredata);*/
   R_RegisterCCallable("xts","coredata_xts", (DL_FUNC) &coredata_xts);
   R_RegisterCCallable("xts","isXts",        (DL_FUNC) &isXts);
   R_RegisterCCallable("xts","tryXts",       (DL_FUNC) &tryXts);
-  /* RegisterXTS(rbindXts); */
   R_RegisterCCallable("xts","do_rbind_xts", (DL_FUNC) &do_rbind_xts);
   R_RegisterCCallable("xts","naCheck",      (DL_FUNC) &naCheck);
   R_RegisterCCallable("xts","lagXts",       (DL_FUNC) &lagXts);
+
+  R_RegisterCCallable("xts","make_index_unique", (DL_FUNC) &make_index_unique);
+  R_RegisterCCallable("xts","make_unique",       (DL_FUNC) &make_unique);
+  R_RegisterCCallable("xts","endpoints",         (DL_FUNC) &endpoints);
+  R_RegisterCCallable("xts","do_merge_xts",      (DL_FUNC) &do_merge_xts);
+  R_RegisterCCallable("xts","na_omit_xts",       (DL_FUNC) &na_omit_xts);
+  R_RegisterCCallable("xts","na_locf",           (DL_FUNC) &na_locf);
 
   /* used by xts (functions moved from xts to zoo) */
   zoo_lag      = (SEXP(*)(SEXP,SEXP,SEXP)) R_GetCCallable("zoo","zoo_lag");
