@@ -1,4 +1,4 @@
-ccb2fe7620855000a6b635b5260de2eb *DESCRIPTION
+e060958cc5e1eab44d02b12ce5eae473 *DESCRIPTION
 23e29749ca8d63e8ab2da0284a7401dd *DEVELOPMENT-NOTES
 5f955296dcee18dc3fef8b86e2f68b20 *NAMESPACE
 72d9f3a163d2edad2cbd26829b4a6faf *NEWS
@@ -33,7 +33,7 @@ d8eada246988dcefade7315bee67a9fa *R/last.R
 211cf2ebf4c718fa2fae37dc0b11507a *R/list.R
 d22f325ba11a4420ded57ace80da948c *R/matrix.R
 8d388fe77726c4cf212b456026ffada9 *R/merge.R
-35337dc814ab8a3022df23c7f0614894 *R/na.R
+521b1010466d2b60492f9a693db211ef *R/na.R
 c08c0097e2a9a4c065893f787b092a41 *R/nperiods.R
 5a82571c1ebb484a01b477bd0f63294b *R/origin.fix.R
 c388ee945a5c05df7eeb52b866343953 *R/parse8601.R
@@ -71,9 +71,9 @@ df23f6d544fca7b695962d1f4421bb99 *inst/api_example/README
 09118e96879feba050a17474ceff8a8d *inst/api_example/man/checkOrder.Rd
 e24ef2161cbc80e1297fe776762ba86d *inst/api_example/man/linkXTS-package.Rd
 c0648d7cd58a619e37191ce4f80c6e9f *inst/api_example/src/checkOrder.c
-0688d9dc0c22cc64dc4c6fa04e338679 *inst/doc/xts-faq.pdf
+fad44bb47ccd8e43d055b17bbcab7c89 *inst/doc/xts-faq.pdf
 2f98b7a787451ce6923c33aa495a8d0c *inst/doc/xts.Rnw
-796018e674b68ad5a957d0bb3ab464b6 *inst/doc/xts.pdf
+6d702ae34b5b2cc5ba8c0d534dd352b2 *inst/doc/xts.pdf
 39a1c5dfdd101b3ee5e2b039c1d4125b *inst/include/xts.h
 49b2854187d440d21a7bf2793ff13c17 *inst/include/xtsAPI.h
 fb8b821627015068f6c24f22e183728a *inst/include/xts_stubs.c
@@ -135,14 +135,14 @@ a2c2c82f39980a7ff9aa56bc644602b0 *src/add_class.c
 7dd82aef8c76a65c942482924c064aa0 *src/attr.c
 5e3a888184eaaed9e3207c262fac57c7 *src/binsearch.c
 56658c8c01e89fbe5a9358b3c3072773 *src/coredata.c
-446898812320988920e6a39aa48d0fbe *src/diff.c
+cea88d1bba6bfa43c56dcdcade7f2f0d *src/diff.c
 fd14e0c8abb1f8bbb2b076634f60ce48 *src/dimnames.c
 8ddb164264d8f56fad0d1a264d86272b *src/endpoints.c
 69ee3e19112972ee6fc3b1dec99379d4 *src/extract_col.c
-f370cdf7aedc01431c4b18a5a9c936c3 *src/init.c
+68e3c22b94a373bb2e27d1947f28dce1 *src/init.c
 ff655130478ffdb0404dcdf22e7dd1bf *src/isOrdered.c
 32313ae140ffe92719536fc58a9edeb4 *src/isXts.c
-a7df0e7d3c734786452c909855a39225 *src/leadingNA.c
+74d1573bb7920648ef1b41e16764b928 *src/leadingNA.c
 264cbdd119727acfbf1076419073fd4f *src/merge.c
 f3168d96d8239a3c4fac79080cdb7563 *src/period.max.f
 f919c541c7ad7986f26118a442ad7770 *src/period.min.f
