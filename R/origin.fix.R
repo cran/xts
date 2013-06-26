@@ -50,7 +50,7 @@ as.Date.POSIXct <- function(x, ...)
 
 as.POSIXlt.Date <- function(x, ...)
 {
-  as.POSIXlt(xts:::as.POSIXct.Date(x))
+  as.POSIXlt(as.POSIXct.Date(x))
 }
 
 #as.POSIXct.yearmon <- function(x, ...)
@@ -72,5 +72,8 @@ as.POSIXct.dates <- function(x, ...)
 }
 as.chron.POSIXct <- function(x, ...)
 {
+  if( !require('chron', quietly=TRUE))
+    as.chron <- function(...) message("package 'chron' required")
+
   structure(as.chron(as.POSIXlt(as.character(x))))
 }
