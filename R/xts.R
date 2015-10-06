@@ -93,6 +93,7 @@ function(x=NULL,
             tclass=orderBy,
             .indexTZ=tzone,
             tzone=tzone,
+            frequency=frequency,
             ...)
   if(!is.null(attributes(x)$dimnames[[1]]))
     # this is very slow if user adds rownames, but maybe that is deserved :)
