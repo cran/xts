@@ -7,7 +7,7 @@
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation, either version 3 of the License, or
+#   the Free Software Foundation, either version 2 of the License, or
 #   (at your option) any later version.
 #
 #   This program is distributed in the hope that it will be useful,
@@ -23,7 +23,7 @@
 
 `re.timeSeries` <-
 function(x,...) {
-  if(!require('timeSeries', quietly=TRUE))
+  if(!requireNamespace('timeSeries', quietly=TRUE))
     timeSeries <- function(...) message("package 'timeSeries' is required")
 
   # strip all non-'core' attributes so they're not attached to the Data slot
@@ -35,7 +35,7 @@ function(x,...) {
     attr(xx,i) <- NULL
   }
 
-  timeSeries(coredata(xx),charvec=as.POSIXct(format(index(x)),tz="GMT"),format=x.attr$format,
+  timeSeries::timeSeries(coredata(xx),charvec=as.POSIXct(format(index(x)),tz="GMT"),format=x.attr$format,
              zone=x.attr$FinCenter,FinCenter=x.attr$FinCenter,
              recordIDs=x.attr$recordIDs,title=x.attr$title,
              documentation=x.attr$documentation,...)
@@ -53,7 +53,7 @@ function(x,dateFormat="POSIXct",FinCenter,recordIDs,title,documentation,..., .RE
   if(missing(documentation)) 
     documentation <- x@documentation
 
-  indexBy <- structure(x@positions, class=c("POSIXt","POSIXct"), tzone=FinCenter)
+  indexBy <- structure(x@positions, class=c("POSIXct","POSIXt"), tzone=FinCenter)
   order.by <- do.call(paste('as',dateFormat,sep='.'),list(as.character(indexBy)))
 
 
@@ -77,10 +77,10 @@ function(x,dateFormat="POSIXct",FinCenter,recordIDs,title,documentation,..., .RE
 }
 
 as.timeSeries.xts <- function(x, ...) {
-  if(!require('timeSeries', quietly=TRUE))
+  if(!requireNamespace('timeSeries', quietly=TRUE))
     timeSeries <- function(...) message("package 'timeSeries' is required")
 
-  timeSeries(data=coredata(x), charvec=as.character(index(x)), ...)
+  timeSeries::timeSeries(data=coredata(x), charvec=as.character(index(x)), ...)
 }
 
 `xts.as.timeSeries` <- function(x,...) {}

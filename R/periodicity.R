@@ -7,7 +7,7 @@
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation, either version 3 of the License, or
+#   the Free Software Foundation, either version 2 of the License, or
 #   (at your option) any later version.
 #
 #   This program is distributed in the hope that it will be useful,
@@ -158,6 +158,18 @@ function(x, INDEX, FUN, ...)
 {
     x <- try.xts(x, error = FALSE)
     FUN <- match.fun(FUN)
+
+    if(!isOrdered(INDEX)) {
+      # isOrdered returns FALSE if there are duplicates
+      INDEX <- sort(unique(INDEX))
+    }
+    if(INDEX[1] != 0) {
+      INDEX <- c(0, INDEX)
+    }
+    if(last(INDEX) != NROW(x)) {
+      INDEX <- c(INDEX, NROW(x))
+    }
+
     xx <- sapply(1:(length(INDEX) - 1), function(y) {
                    FUN(x[(INDEX[y] + 1):INDEX[y + 1]], ...)
                 })  

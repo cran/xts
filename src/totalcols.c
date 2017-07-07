@@ -7,7 +7,7 @@
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation, either version 3 of the License, or
+#   the Free Software Foundation, either version 2 of the License, or
 #   (at your option) any later version.
 #
 #   This program is distributed in the hope that it will be useful,
@@ -43,34 +43,4 @@ SEXP number_of_cols (SEXP args)
   }
   UNPROTECT(P);
   return tcols;
-}
-
-SEXP col_names (SEXP args)
-{
-  SEXP num_cols, sym_names, coln, dimnames, argstart;
-  int c, i=0, P=0;
-
-  argstart = args;
-  PROTECT( num_cols = number_of_cols(args) ); P++;
-  args = argstart;
-  
-  args = CDR(args); // call name
-  PROTECT(sym_names = CAR(args)); P++; args = CDR(args);
-
-  PROTECT(coln = allocVector(STRSXP, length(args))); P++;
-  for(;args != R_NilValue; i++, args=CDR(args)) {
-    if( length(CAR(args)) > 0) {
-      PROTECT(dimnames = getAttrib(CAR(args), R_DimNamesSymbol)); P++;
-      if( !isNull(dimnames) && !isNull(VECTOR_ELT(dimnames,2)) ) {
-        for(c=0; c < INTEGER(num_cols)[i]; c++) {
-          
-        }
-      } else {
-
-      }
-    }
-  } 
-
-  UNPROTECT(P);
-  return coln;
 }

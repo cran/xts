@@ -7,7 +7,7 @@
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation, either version 3 of the License, or
+#   the Free Software Foundation, either version 2 of the License, or
 #   (at your option) any later version.
 #
 #   This program is distributed in the hope that it will be useful,
@@ -22,8 +22,8 @@
 `as.xts.fts` <-
 function(x, ..., .RECLASS=FALSE)
 {
-  dates <- as.numeric(dates(x)) # fts uses POSIXct
-  attr(x,'dates') <- NULL
+  dates <- .index(x) # fts uses POSIXct
+  attributes(dates) <- NULL
   if(.RECLASS) {
   .xts(unclass(x), dates, .CLASS="fts", ...)
   } else {
@@ -34,16 +34,20 @@ function(x, ..., .RECLASS=FALSE)
 `as.fts.xts` <-
 function(x)
 {
-  if(!require('fts', quietly=TRUE))
+  if(!requireNamespace('fts', quietly=TRUE))
     fts <- function(...) message("package 'fts' is required")
 
-  fts(coredata(x), structure(.index(x), class=c("POSIXt","POSIXct")))
+  ix <- .index(x)
+  attributes(ix) <- NULL
+  fts::fts(ix, coredata(x))
 }
 
 re.fts <- function(x, ...) 
 {
-  if(!require('fts', quietly=TRUE))
+  if(!requireNamespace('fts', quietly=TRUE))
     fts <- function(...) message("package 'fts' is required")
 
-  fts(coredata(x), structure(.index(x), class=c("POSIXt","POSIXct")))
+  ix <- .index(x)
+  attributes(ix) <- NULL
+  fts::fts(ix, coredata(x))
 }

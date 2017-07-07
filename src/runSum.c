@@ -7,7 +7,7 @@
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation, either version 3 of the License, or
+#   the Free Software Foundation, either version 2 of the License, or
 #   (at your option) any later version.
 #
 #   This program is distributed in the hope that it will be useful,
@@ -138,12 +138,11 @@ SEXP runSum (SEXP x, SEXP n)
     */
   }
 
-  /* there are MACROS and functions in xts.h that will do this */
   setAttrib(result, R_DimSymbol, getAttrib(x, R_DimSymbol));
-  setAttrib(result, install("class"), getAttrib(x, install("class")));
-  setAttrib(result, install("index"), getAttrib(x, install("index")));
-  setAttrib(result, install(".indexFORMAT"), getAttrib(x, install(".indexFORMAT")));
-  setAttrib(result, install(".indexCLASS"), getAttrib(x, install(".indexCLASS")));
+  setAttrib(result, R_ClassSymbol, getAttrib(x, R_ClassSymbol));
+  setAttrib(result, xts_IndexSymbol, getAttrib(x, xts_IndexSymbol));
+  setAttrib(result, xts_IndexFormatSymbol, getAttrib(x, xts_IndexFormatSymbol));
+  setAttrib(result, xts_IndexClassSymbol, getAttrib(x, xts_IndexClassSymbol));
 
   UNPROTECT(P);
   return result;

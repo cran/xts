@@ -7,7 +7,7 @@
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation, either version 3 of the License, or
+#   the Free Software Foundation, either version 2 of the License, or
 #   (at your option) any later version.
 #
 #   This program is distributed in the hope that it will be useful,
@@ -84,7 +84,8 @@ function(x,dateFormat,...,.RECLASS=FALSE) {
                             list(as.numeric(time(x)),origin='1970-01-01',...))
       } else {
         mo <- ifelse(length(mo) < 1, 1,floor(mo * 12)+1)
-        order.by <- seq.Date(as.Date(firstof(yr,mo),origin='1970-01-01'),length.out=length(x),by='year')   
+        from <- as.Date(firstof(yr,mo),origin='1970-01-01')
+        order.by <- seq.Date(from,length.out=length(time(x)),by='year')
       }
     } else
       if(frequency(x) == 4) {

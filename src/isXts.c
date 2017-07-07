@@ -7,7 +7,7 @@
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation, either version 3 of the License, or
+#   the Free Software Foundation, either version 2 of the License, or
 #   (at your option) any later version.
 #
 #   This program is distributed in the hope that it will be useful,
@@ -23,13 +23,14 @@
 #include <R.h>
 #include <Rinternals.h>
 #include <Rdefines.h>
+#include "xts.h"
 
 int isXts(SEXP x) 
 {
   int i;
   SEXP attr, index;
 
-  index = getAttrib(x, install("index"));
+  index = getAttrib(x, xts_IndexSymbol);
   PROTECT( attr = coerceVector(getAttrib(x, R_ClassSymbol),STRSXP) );
   if(length(attr) <= 1) {
     UNPROTECT(1);

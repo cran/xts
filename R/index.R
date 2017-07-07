@@ -7,7 +7,7 @@
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation, either version 3 of the License, or
+#   the Free Software Foundation, either version 2 of the License, or
 #   (at your option) any later version.
 #
 #   This program is distributed in the hope that it will be useful,
@@ -38,28 +38,31 @@ function(x, ...) {
 
   if(!is.list(value)) 
     value <- as.list(value)
-  if(!value[[1]] %in% c('multitime','dates','chron',
-                        'POSIXt','POSIXlt','POSIXct',
-                        'Date','timeDate',
-                        'yearmon','yearqtr') ) {
-       stop(paste('unsupported',sQuote('indexClass'),'indexing type:',as.character(value[[1]])))
-  }
-  if(value[[1]]=='timeDate') {
-    stopifnot('package:timeDate' %in% search() | require('timeDate',quietly=TRUE))
-    x.index <- do.call(paste('as',value[[1]],sep='.'),list(x.index))
-  } 
-  else if(value[[1]] %in% c('chron','dates','POSIXt','POSIXct','POSIXlt','yearmon','yearqtr')) {
-    if('POSIXt' %in% value[[1]]) value[[1]] <- value[[2]] # get specific ct/lt value
-    if(value[[1]] %in% c('dates','chron')) {
-      stopifnot('package:chron' %in% search() | require('chron',quietly=TRUE))
-      x.index <- format(x.index)
-      value[[1]] <- 'chron'
-    } 
-    x.index <- do.call(paste('as',value[[1]],sep='.'),list(x.index))
-  } else x.index <- as.Date(as.character(x.index))
-  if(class(x.index)[1] %in% c('chron'))
-    attr(x.index, 'tzone') <- NULL
-  x.index
+
+  switch(value[[1]],
+    multitime = as.Date(as.character(x.index)),
+    POSIXt = {
+      # get specific ct/lt value
+      do.call(paste('as',value[[2]],sep='.'),list(x.index))
+    },
+    POSIXct = as.POSIXct(x.index),
+    POSIXlt = as.POSIXlt(x.index),
+    timeDate = {
+      if(!requireNamespace("timeDate", quietly=TRUE))
+          stop("package:",dQuote("timeDate"),"cannot be loaded.")
+      timeDate::as.timeDate(x.index)
+    },
+    chron = ,
+    dates = {
+      if(!requireNamespace("chron", quietly=TRUE))
+        stop("package:",dQuote("chron"),"cannot be loaded.")
+      chron::as.chron(format(x.index))
+    },
+    #Date = as.Date(as.character(x.index)),  # handled above
+    yearmon = as.yearmon(x.index),
+    yearqtr = as.yearqtr(x.index),
+    stop(paste('unsupported',sQuote('indexClass'),'indexing type:',value[[1]]))
+  )
 }
 
 `time<-.xts` <- `index<-.xts` <- function(x, value) {
@@ -74,10 +77,18 @@ function(x, ...) {
     attr(x, 'index') <- structure(unclass(value)*86400, tclass="Date", tzone="UTC")
   else attr(x, 'index') <- as.numeric(as.POSIXct(value))
 
+  # ensure new index is sorted
+  if(!isOrdered(.index(x), strictly=FALSE))
+    stop("new index needs to be sorted")
+
   # set the .indexCLASS/tclass attribute to the end-user specified class
   attr(x, '.indexCLASS') <- class(value)
+  if(any(class(value) %in% .classesWithoutTZ)) {
+    attr(.index(x), 'tzone') <- 'UTC'
+  } else {
+    attr(.index(x), 'tzone') <- attr(value, 'tzone')
+  }
   attr(.index(x), 'tclass') <- class(value)
-  attr(.index(x), 'tzone') <- attr(value,"tzone")
   return(x)
 }
 
@@ -102,45 +113,35 @@ function(x, ...) {
 }
 
 `.indexsec` <- function(x) {
-  #as.POSIXlt( structure( .index(x), class=c('POSIXt','POSIXct')) )$sec
-  as.POSIXlt(.POSIXct(.index(x)))$sec
+  as.POSIXlt(.POSIXct(.index(x), tz=indexTZ(x)))$sec
 }
 `.indexmin` <- function(x) {
-  #as.POSIXlt( structure( .index(x), class=c('POSIXt','POSIXct')) )$min
-  as.POSIXlt(.POSIXct(.index(x)))$min
+  as.POSIXlt(.POSIXct(.index(x), tz=indexTZ(x)))$min
 }
 `.indexhour` <- function(x) {
-  #as.POSIXlt( structure( .index(x), class=c('POSIXt','POSIXct')) )$hour
-  as.POSIXlt(.POSIXct(.index(x)))$hour
+  as.POSIXlt(.POSIXct(.index(x), tz=indexTZ(x)))$hour
 }
 `.indexmday` <- function(x) {
-  #as.POSIXlt( structure( .index(x), class=c('POSIXt','POSIXct')) )$mday
-  as.POSIXlt(.POSIXct(.index(x)))$mday
+  as.POSIXlt(.POSIXct(.index(x), tz=indexTZ(x)))$mday
 }
 `.indexmon` <- function(x) {
-  #as.POSIXlt( structure( .index(x), class=c('POSIXt','POSIXct')) )$mon
-  as.POSIXlt(.POSIXct(.index(x)))$mon
+  as.POSIXlt(.POSIXct(.index(x), tz=indexTZ(x)))$mon
 }
 `.indexyear` <- function(x) {
-  #as.POSIXlt( structure( .index(x), class=c('POSIXt','POSIXct')) )$year
-  as.POSIXlt(.POSIXct(.index(x)))$year
+  as.POSIXlt(.POSIXct(.index(x), tz=indexTZ(x)))$year
 }
 `.indexwday` <- function(x) {
-  #as.POSIXlt( structure( .index(x), class=c('POSIXt','POSIXct')) )$wday
-  as.POSIXlt(.POSIXct(.index(x)))$wday
+  as.POSIXlt(.POSIXct(.index(x), tz=indexTZ(x)))$wday
 }
 `.indexbday` <- function(x) {
   # is business day T/F
-  #as.POSIXlt( structure( .index(x), class=c('POSIXt','POSIXct')) )$wday %% 6 > 0
-  as.POSIXlt(.POSIXct(.index(x)))$wday %% 6 > 0
+  as.POSIXlt(.POSIXct(.index(x), tz=indexTZ(x)))$wday %% 6 > 0
 }
 `.indexyday` <- function(x) {
-  #as.POSIXlt( structure( .index(x), class=c('POSIXt','POSIXct')) )$yday
-  as.POSIXlt(.POSIXct(.index(x)))$yday
+  as.POSIXlt(.POSIXct(.index(x), tz=indexTZ(x)))$yday
 }
 `.indexisdst` <- function(x) {
-  #as.POSIXlt( structure( .index(x), class=c('POSIXt','POSIXct')) )$isdst
-  as.POSIXlt(.POSIXct(.index(x)))$isdst
+  as.POSIXlt(.POSIXct(.index(x), tz=indexTZ(x)))$isdst
 }
 `.indexDate` <- `.indexday` <- function(x) {
   .index(x) %/% 86400L

@@ -7,7 +7,7 @@
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation, either version 3 of the License, or
+#   the Free Software Foundation, either version 2 of the License, or
 #   (at your option) any later version.
 #
 #   This program is distributed in the hope that it will be useful,
@@ -213,7 +213,7 @@ return(result);
       xp++;
     } else
     if( real_xindex[ xp-1 ] == real_yindex[ yp-1 ] ) {
-      if( real_xindex[ xp-1 ] < real_xindex[ xp   ] )
+      if( xp < nrx && real_xindex[ xp-1 ] < real_xindex[ xp   ] )
         add_y = 1;  /* add y values only if next xindex is new */
       if(no_duplicate) {
         add_y = 0;
@@ -380,7 +380,7 @@ return(result);
       xp++;
     } else
     if( int_xindex[ xp-1 ] == int_yindex[ yp-1 ] ) {
-      if( int_xindex[ xp-1 ] < int_xindex[ xp  ] )
+      if( xp < nrx && int_xindex[ xp-1 ] < int_xindex[ xp   ] )
         add_y = 1;
       if(no_duplicate) {
         add_y = 0;
@@ -508,9 +508,10 @@ return(result);
 // SEXP rbindXts ( .External("rbindXts", ...) ) {{{
 SEXP rbindXts (SEXP args)
 {
-  SEXP _x, _y;
+  SEXP _x;
   SEXP dup;
   int P=0;
+  PROTECT_INDEX ipx;
 
   args = CDR(args); // 'rbindXts' call name
   PROTECT(dup = CAR(args)); P++;
@@ -524,12 +525,10 @@ SEXP rbindXts (SEXP args)
     return(_x);
   }
 
-  PROTECT(_y = CAR(args)); P++;
+  PROTECT_WITH_INDEX(_x = do_rbind_xts(_x, CAR(args), dup), &ipx); P++;
   args = CDR(args);
-
-  PROTECT(_x = do_rbind_xts(_x, _y, dup)); P++;
   while(args != R_NilValue) {
-    PROTECT(_x = do_rbind_xts(_x, CAR(args), dup)); P++;
+    REPROTECT(_x = do_rbind_xts(_x, CAR(args), dup), ipx);
     args = CDR(args);
   }
 
@@ -626,8 +625,8 @@ SEXP rbind_append (SEXP x, SEXP y) {
   copyAttributes(x, result); 
 
   SEXP index, xindex, yindex;
-  xindex = getAttrib(x,install("index"));
-  yindex = getAttrib(y,install("index"));
+  xindex = getAttrib(x, xts_IndexSymbol);
+  yindex = getAttrib(y, xts_IndexSymbol);
   int INDEXTYPE = TYPEOF(xindex);
   if(INDEXTYPE != NILSXP) {
     PROTECT(index = allocVector(INDEXTYPE, nr));
@@ -640,7 +639,7 @@ SEXP rbind_append (SEXP x, SEXP y) {
       memcpy(&(INTEGER(index)[nrs_x]), INTEGER(yindex), nrs_y * sizeof(int));
     }
     copyMostAttrib(xindex, index);
-    setAttrib(result, install("index"), index);
+    setAttrib(result, xts_IndexSymbol, index);
     UNPROTECT(1);
   }
 

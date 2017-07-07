@@ -7,7 +7,7 @@
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation, either version 3 of the License, or
+#   the Free Software Foundation, either version 2 of the License, or
 #   (at your option) any later version.
 #
 #   This program is distributed in the hope that it will be useful,
@@ -59,6 +59,8 @@ tzone.xts <- indexTZ.xts <- function(x, ...)
     return(tzone)
 }
 
+.classesWithoutTZ <- c("chron","dates","times","Date","yearmon","yearqtr")
+
 check.TZ <- function(x, ...)
 {
   #if( !getOption("xts_check_TZ", FALSE))
@@ -67,8 +69,16 @@ check.TZ <- function(x, ...)
   if( !is.null(check) && !check)
     return()
   STZ <- as.character(Sys.getenv("TZ"))
-  if(any(indexClass(x) %in% c("chron","dates","times","Date")))
-    return()
+  if(any(indexClass(x) %in% .classesWithoutTZ)) {
+    # warn if indexTZ is not UTC or GMT (GMT is not technically correct, since
+    # it *is* a timezone, but it should work for all practical purposes)
+    if (!(indexTZ(x) %in% c("UTC","GMT")))
+      warning(paste0("index class is ", paste(class(index(x)), collapse=", "),
+        ", which does not support timezones.\nExpected 'UTC' timezone",
+        ", but indexTZ is ", ifelse(indexTZ(x)=="", "''", indexTZ(x))), call.=FALSE)
+    else
+      return()
+  }
   if(!is.null(indexTZ(x)) && indexTZ(x) != "" &&
      !identical(STZ, as.character(indexTZ(x))))
     warning(paste("timezone of object (",indexTZ(x),

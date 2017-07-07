@@ -1,51 +1,142 @@
 \name{plot.xts}
 \alias{plot.xts}
-\title{ Plotting xts Objects }
-\description{
-Plotting methods for xts objects.
-}
+\alias{lines.xts}
+\alias{points.xts}
+\title{Plotting xts Objects}
 \usage{
-\method{plot}{xts}(x, y = NULL,
-         type = "l", 
-         auto.grid = TRUE,
-         major.ticks = "auto",
-         minor.ticks = TRUE,
-         major.format = TRUE,
-         bar.col = "grey",
-         candle.col = "white",
-         ann = TRUE, axes = TRUE, ...)
+\method{plot}{xts}(x, y = NULL, ..., subset = "",
+  panels = NULL, multi.panel = FALSE, col = 1:8, up.col = "green",
+  dn.col = "red", bg = "#FFFFFF", type = "l", lty = 1, lwd = 2, lend = 1,
+  main = deparse(substitute(x)), observation.based = FALSE,
+  ylim = NULL, yaxis.same = TRUE, yaxis.left = TRUE, yaxis.right = TRUE,
+  major.ticks = "months", minor.ticks = NULL,
+  grid.ticks.on = "months", grid.ticks.lwd = 1, grid.ticks.lty = 1,
+  grid.col = "darkgray", labels.col = "#333333", format.labels = TRUE,
+  grid2 = "#F5F5F5", legend.loc = NULL)
+\method{lines}{xts}(x, ..., main = "", on = 0, col = NULL, type = "l",
+  lty = 1, lwd = 1, pch = 0)
+\method{points}{xts}(x, ..., main = "", on = 0, col = NULL, pch = 0)
 }
 \arguments{
-  \item{x}{ an \code{xts} object }
-  \item{y}{ an \code{xts} object or NULL }
-  \item{type}{ type of plot to produce }
-  \item{auto.grid}{ should grid lines be drawn }
-  \item{major.ticks}{ should major tickmarks be drawn and labeled }
-  \item{minor.ticks}{ should minor tickmarks be drawn }
-  \item{major.format}{ passed along to axTicksByTime. See also }
-  \item{bar.col}{ the color of the bars when type is \sQuote{bars} or \sQuote{candles} }
-  \item{candle.col}{ the color of the candles when type is \sQuote{candles} }
-  \item{ann}{ passed \sQuote{par} graphical parameter }
-  \item{axes}{passed \sQuote{par} graphical parameter }
-  \item{\dots}{ additional graphical arguments }
-}
-\details{
-Mainly used to draw time-series plots with sensible x-axis labels, it
-can also plot basic OHLC series using \code{type='candles'} or \code{type='bars'}.
+\item{x}{xts object}
 
-Better financial plots can be found in the \pkg{quantmod} package, though
-these are generally incompatible with standard R graphics tools.
+\item{y}{NULL, not used}
+
+\item{\dots}{any passthrough graphical arguments for \code{lines} and \code{points}}
+
+\item{subset}{character vector of length one of the subset range using subsetting as in \code{\link{xts}}}
+
+\item{panels}{character vector of expressions to plot as panels}
+
+\item{multi.panel}{TRUE/FALSE or an integer less than or equal to the number
+of columns in the data set. If TRUE, each column of the data is plotted in a
+separate panel. For example, if \code{multi.panel = 2}, then the data
+will be plotted in groups of 2 columns and each group is plotted in a
+separate panel.}
+
+\item{col}{color palette to use, set by default to rational choices}
+
+\item{up.col}{color for positive bars if \code{type="h"}}
+
+\item{dn.col}{color for negative bars if \code{type="h"}}
+
+\item{bg}{background color of plotting area, same as in \code{\link{par}}}
+
+\item{type}{the type of plot to be drawn, same as in \code{\link{plot}}}
+
+\item{lty}{set the line type, same as in \code{\link{par}}}
+
+\item{lwd}{set the line width, same as in \code{\link{par}}}
+
+\item{lend}{set the line end style, same as in \code{\link{par}}}
+
+\item{main}{main title}
+
+\item{observation.based}{TRUE/FALSE (default FALSE). If \code{TRUE}, the x-axis is drawn based on observations in the data. If \code{FALSE}, the x-axis is drawn based on the time index of the data.}
+
+\item{ylim}{the range of the y axis}
+
+\item{yaxis.same}{TRUE/FALSE. If TRUE, the y axis is drawn with the same ylim for multiple panels}
+
+\item{yaxis.left}{if TRUE, draws the y axis on the left}
+
+\item{yaxis.right}{if TRUE, draws the y axis on the right}
+
+\item{major.ticks}{period to draw the ticks and labels on the x-axis}
+
+\item{minor.ticks}{period to draw minor ticks on the x-axis. If \code{NULL}, minor ticks are not drawn.}
+
+\item{grid.ticks.on}{period to draw the vertical grid lines on}
+
+\item{grid.ticks.lwd}{line width of the grid}
+
+\item{grid.ticks.lty}{line type of the grid}
+
+\item{grid.col}{color of the grid}
+
+\item{labels.col}{color of the axis labels}
+
+\item{format.labels}{label format to draw lower frequency x-axis ticks and labels passed to \code{\link{axTicksByTime}}}
+
+\item{grid2}{color for secondary x axis grid}
+
+\item{legend.loc}{places a legend into one of nine locations on the chart:
+bottomright, bottom, bottomleft, left, topleft, top, topright, right, or
+center. Default NULL does not draw a legend.}
+
+\item{pch}{the plotting character to use, same as in \code{\link{par}}.}
+
+\item{on}{panel number to draw on. A new panel will be drawn if \code{on=NA}.
+The default, \code{on=0}, will add to the active panel. The active panel is 
+defined as the panel on which the most recent action was performed. Note that
+only the first element of \code{on} is checked for the default behavior to
+add to the last active panel.}
 }
-\value{
-Plots an xts object to the current device.
+\description{
+Plotting for xts objects.
 }
-\author{ Jeffrey A. Ryan }
+\author{
+Ross Bennett
+}
+\references{
+based on \code{chart_Series} in the \code{quantmod} package by Jeffrey A. Ryan
+}
+\seealso{
+\code{\link{addSeries}}, \code{\link{addPanel}}
+}
 \examples{
+\dontrun{
 data(sample_matrix)
-plot(sample_matrix)
-plot(as.xts(sample_matrix))
-plot(as.xts(sample_matrix), type='candles')
+sample.xts <- as.xts(sample_matrix)
+
+# plot the Close
+plot(sample.xts[,"Close"])
+
+# plot a subset of the data
+plot(sample.xts[,"Close"], subset="2007-04-01/2007-06-31")
+
+# function to compute simple returns
+simple.ret <- function(x, col.name){
+  x[,col.name] / lag(x[,col.name]) - 1
 }
-% Add one or more standard keywords, see file 'KEYWORDS' in the
-% R documentation directory.
-\keyword{ hplot }
+
+# plot the close and add a panel with the simple returns
+plot(sample.xts[,"Close"])
+R <- simple.ret(sample.xts, "Close")
+lines(R, type="h", on=NA)
+
+# add the 50 period simple moving average to panel 1 of the plot
+library(TTR)
+lines(SMA(sample.xts[,"Close"], n = 50), on=1, col="blue")
+
+# add month end points to the chart
+points(sample.xts[endpoints(sample.xts[,"Close"], on = "months"), "Close"], 
+       col="red", pch=17, on=1)
+
+# add legend to panel 1
+addLegend("topright", on=1, 
+          legend.names = c("Close", "SMA(50)"), 
+          lty=c(1, 1), lwd=c(2, 1),
+          col=c("black", "blue", "red"))
+}
+}

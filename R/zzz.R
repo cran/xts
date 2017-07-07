@@ -1,5 +1,9 @@
 # internal package environment for use with lines.xts
+# Do we still need this env?
 .xtsEnv <- new.env()
+
+# Environment for our xts chart objects (xts_chob)
+.plotxtsEnv <- new.env()
 
 .onLoad <- function(libname, pkgname)
 {
@@ -13,7 +17,11 @@
 #  }
 }
 
+.onUnload <- function(libpath) {
+  library.dynam.unload("xts", libpath)
+}
+
 if(getRversion() < "2.11.0") {
     .POSIXct <- function(xx, tz = NULL)
-    structure(xx, class = c("POSIXt", "POSIXct"), tzone = tz)
+    structure(xx, class = c("POSIXct", "POSIXt"), tzone = tz)
 }

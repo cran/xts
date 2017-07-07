@@ -7,7 +7,7 @@
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation, either version 3 of the License, or
+#   the Free Software Foundation, either version 2 of the License, or
 #   (at your option) any later version.
 #
 #   This program is distributed in the hope that it will be useful,
@@ -29,10 +29,10 @@ function(x,fmt,...) {
   
   xx <- coredata(x, fmt)
   if(length(xx) == 0) {
-    #if(!is.null(colnames(x))) {
     if(!is.null(dim(x))) {
-      #print(structure(structure(NULL,dim=c(0,NCOL(x))),dimnames=list(NULL,colnames(x))))
-      print(structure(structure(NULL,dim=dim(x)),dimnames=list(format(index(x)),colnames(x))))
+      p <- structure(vector(storage.mode(xx)), dim = dim(x),
+                     dimnames = list(format(index(x)),colnames(x)))
+      print(p)
     } else {
       cat('Data:\n')
       print(vector(storage.mode(xx)))

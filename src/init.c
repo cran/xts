@@ -7,7 +7,7 @@
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation, either version 3 of the License, or
+#   the Free Software Foundation, either version 2 of the License, or
 #   (at your option) any later version.
 #
 #   This program is distributed in the hope that it will be useful,
@@ -50,8 +50,29 @@ R_ExternalMethodDef externalMethods[] = {
   {NULL,                    NULL,                               0}
 };
 
+/*
+ * Taken from R/src/main/names.c
+ *   "Set up a set of globals so that a symbol table search can be
+ *    avoided when matching something like dim or dimnames."
+ *
+ * This also prevents flags from rchk's maacheck (Multiple-Allocating-
+ * Arguments) tool for calls like:
+ *   setAttrib(result, xts_IndexSymbol, getAttrib(x, xts_IndexSymbol));
+ */
+static void SymbolShortcuts(void)
+{
+  xts_IndexSymbol = install("index");
+  xts_ClassSymbol = install(".CLASS");
+  xts_IndexFormatSymbol = install(".indexFORMAT");
+  xts_IndexClassSymbol = install(".indexCLASS");
+  xts_IndexTZSymbol = install(".indexTZ");
+  xts_IndexTclassSymbol = install("tclass");
+  xts_IndexTzoneSymbol = install("tzone");
+}
+
 void R_init_xts(DllInfo *info)
 {
+  SymbolShortcuts();
   R_registerRoutines(info,
                      NULL,
                      callMethods,

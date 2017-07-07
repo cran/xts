@@ -7,7 +7,7 @@
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation, either version 3 of the License, or
+#   the Free Software Foundation, either version 2 of the License, or
 #   (at your option) any later version.
 #
 #   This program is distributed in the hope that it will be useful,
@@ -76,7 +76,7 @@ function(x, retclass=NULL, length.out=NULL) {
   if(max.resolution == 0) 
     max.resolution <- 1
 
-  resolution <- c('year','month','day','hour','mins','secs')[max.resolution]
+  resolution <- c('year','month','DSTday','hour','mins','secs')[max.resolution]
 
   if(!is.na(BY)) resolution <- names(match.arg(BY, list(year  ='Y',
                                                         month ='m',
@@ -87,7 +87,7 @@ function(x, retclass=NULL, length.out=NULL) {
 
   convert.to <- 'Date'
   if(max.resolution == 2 || resolution == 'month' ) convert.to <- 'yearmon'
-  if(max.resolution >  3 || resolution %in% c("H","M","S")) convert.to <- 'POSIXct'
+  if(max.resolution >  3 || resolution %in% c("hour","mins","secs")) convert.to <- 'POSIXct'
 
  
   if(is.na(to) && missing(length.out))
@@ -106,7 +106,7 @@ function(x, retclass=NULL, length.out=NULL) {
 
   if(!is.null(retclass)) convert.to <- retclass
   if(convert.to == 'POSIXct') {
-    structure(SEQ, class=c('POSIXt','POSIXct'))  # need to force the TZ to be used
+    structure(SEQ, class=c('POSIXct','POSIXt'))  # need to force the TZ to be used
   } else
   do.call(paste('as',convert.to,sep='.'), list(SEQ))
 

@@ -3,7 +3,7 @@
 #include "xts.h"
 
 
-static SEXP ExtractSubset(SEXP x, SEXP result, SEXP indx) //, SEXP call)
+static SEXP xts_ExtractSubset(SEXP x, SEXP result, SEXP indx) //, SEXP call)
 {
     /* ExtractSubset is currently copied/inspired by subset.c from GNU-R
        This is slated to be reimplemented using the previous method
@@ -101,7 +101,7 @@ SEXP _do_subset_xts (SEXP x, SEXP sr, SEXP sc, SEXP drop) {
   nr = length(sr); nc = length(sc);
 
   SEXP oindex, nindex;
-  oindex = getAttrib(x, install("index"));
+  oindex = getAttrib(x, xts_IndexSymbol);
   PROTECT(nindex = allocVector(TYPEOF(oindex), nr)); P++;
   PROTECT(result = allocVector(TYPEOF(x), nr*nc)); P++;
   j = 0;
@@ -126,22 +126,35 @@ SEXP _do_subset_xts (SEXP x, SEXP sr, SEXP sc, SEXP drop) {
         if(int_sr[i] > nrs || int_sc[j] > ncs)
           error("'i' or 'j' out of range");
         int_nindex[i] = int_oindex[int_sr[i]-1];
-        int_result[i+j*nr] = int_x[int_sr[i]-1 + ((int_sc[j]-1) * nrs)];
+        if(int_sc[j] == NA_INTEGER)
+          int_result[i+j*nr] = NA_INTEGER;
+        else
+          int_result[i+j*nr] = int_x[int_sr[i]-1 + ((int_sc[j]-1) * nrs)];
       }
     } else
     if(TYPEOF(nindex)==REALSXP) {
       real_nindex = REAL(nindex);
       real_oindex = REAL(oindex);
       for(i=0; i<nr; i++) {
+        if(int_sr[i] == NA_INTEGER)
+          error("'i' contains NA");
+        if(int_sr[i] > nrs || int_sc[j] > ncs)
+          error("'i' or 'j' out of range");
         real_nindex[i] = real_oindex[int_sr[i]-1];
-        int_result[i+j*nr] = int_x[int_sr[i]-1 + ((int_sc[j]-1) * nrs)];
+        if(int_sc[j] == NA_INTEGER)
+          int_result[i+j*nr] = NA_INTEGER;
+        else
+          int_result[i+j*nr] = int_x[int_sr[i]-1 + ((int_sc[j]-1) * nrs)];
       }
     }
     copyAttributes(oindex, nindex);
-    setAttrib(result, install("index"), nindex);
+    setAttrib(result, xts_IndexSymbol, nindex);
     for(j=1; j<nc; j++) {
       for(i=0; i<nr; i++) {
-        int_result[i+j*nr] = int_x[int_sr[i]-1 + ((int_sc[j]-1) * nrs)];
+        if(int_sc[j] == NA_INTEGER)
+          int_result[i+j*nr] = NA_INTEGER;
+        else
+          int_result[i+j*nr] = int_x[int_sr[i]-1 + ((int_sc[j]-1) * nrs)];
       }
     }
   } else
@@ -160,7 +173,10 @@ SEXP _do_subset_xts (SEXP x, SEXP sr, SEXP sc, SEXP drop) {
         if(int_sr[i] > nrs || int_sc[j] > ncs)
           error("'i' or 'j' out of range");
         int_nindex[i] = int_oindex[int_sr[i]-1];
-        int_result[i+j*nr] = int_x[int_sr[i]-1 + ((int_sc[j]-1) * nrs)];
+        if(int_sc[j] == NA_INTEGER)
+          int_result[i+j*nr] = NA_INTEGER;
+        else
+          int_result[i+j*nr] = int_x[int_sr[i]-1 + ((int_sc[j]-1) * nrs)];
       }
     } else
     if(TYPEOF(nindex)==REALSXP) {
@@ -172,16 +188,22 @@ SEXP _do_subset_xts (SEXP x, SEXP sr, SEXP sc, SEXP drop) {
         if(int_sr[i] > nrs || int_sc[j] > ncs)
           error("'i' or 'j' out of range");
         real_nindex[i] = real_oindex[int_sr[i]-1];
-        int_result[i+j*nr] = int_x[int_sr[i]-1 + ((int_sc[j]-1) * nrs)];
+        if(int_sc[j] == NA_INTEGER)
+          int_result[i+j*nr] = NA_INTEGER;
+        else
+          int_result[i+j*nr] = int_x[int_sr[i]-1 + ((int_sc[j]-1) * nrs)];
       }
     }
     copyAttributes(oindex, nindex);
-    setAttrib(result, install("index"), nindex);
+    setAttrib(result, xts_IndexSymbol, nindex);
 
     /* loop through remaining columns */
     for(j=1; j<nc; j++) {
       for(i=0; i<nr; i++) {
-        int_result[i+j*nr] = int_x[int_sr[i]-1 + ((int_sc[j]-1) * nrs)];
+        if(int_sc[j] == NA_INTEGER)
+          int_result[i+j*nr] = NA_INTEGER;
+        else
+          int_result[i+j*nr] = int_x[int_sr[i]-1 + ((int_sc[j]-1) * nrs)];
       }
     }
   } else
@@ -197,7 +219,10 @@ SEXP _do_subset_xts (SEXP x, SEXP sr, SEXP sc, SEXP drop) {
         if(int_sr[i] > nrs || int_sc[j] > ncs)
           error("'i' or 'j' out of range");
         int_nindex[i] = int_oindex[int_sr[i]-1];
-        real_result[i+j*nr] = real_x[int_sr[i]-1 + ((int_sc[j]-1) * nrs)];
+        if(int_sc[j] == NA_INTEGER)
+          real_result[i+j*nr] = NA_REAL;
+        else
+          real_result[i+j*nr] = real_x[int_sr[i]-1 + ((int_sc[j]-1) * nrs)];
       }
     } else
     if(TYPEOF(nindex)==REALSXP) {
@@ -209,15 +234,21 @@ SEXP _do_subset_xts (SEXP x, SEXP sr, SEXP sc, SEXP drop) {
         if(int_sr[i] > nrs || int_sc[j] > ncs)
           error("'i' or 'j' out of range");
         real_nindex[i] = real_oindex[int_sr[i]-1];
-        real_result[i+j*nr] = real_x[int_sr[i]-1 + ((int_sc[j]-1) * nrs)];
+        if(int_sc[j] == NA_INTEGER)
+          real_result[i+j*nr] = NA_REAL;
+        else
+          real_result[i+j*nr] = real_x[int_sr[i]-1 + ((int_sc[j]-1) * nrs)];
       }
     }
     copyAttributes(oindex, nindex);
-    setAttrib(result, install("index"), nindex);
+    setAttrib(result, xts_IndexSymbol, nindex);
 
     for(j=1; j<nc; j++) {
       for(i=0; i<nr; i++) {
-        real_result[i+j*nr] = real_x[int_sr[i]-1 + ((int_sc[j]-1) * nrs)];
+        if(int_sc[j] == NA_INTEGER)
+          real_result[i+j*nr] = NA_REAL;
+        else
+          real_result[i+j*nr] = real_x[int_sr[i]-1 + ((int_sc[j]-1) * nrs)];
       }
     }
   } else
@@ -235,7 +266,11 @@ SEXP _do_subset_xts (SEXP x, SEXP sr, SEXP sc, SEXP drop) {
         if(int_sr[i] > nrs || int_sc[j] > ncs)
           error("'i' or 'j' out of range");
         int_nindex[i] = int_oindex[int_sr[i]-1];
-        COMPLEX(result)[i+j*nr] = COMPLEX(x)[int_sr[i]-1 + ((int_sc[j]-1) * nrs)];
+        if(int_sc[j] == NA_INTEGER) {
+          COMPLEX(result)[i+j*nr].r = NA_REAL;
+          COMPLEX(result)[i+j*nr].i = NA_REAL;
+        } else
+          COMPLEX(result)[i+j*nr] = COMPLEX(x)[int_sr[i]-1 + ((int_sc[j]-1) * nrs)];
       }
     } else
     if(TYPEOF(nindex)==REALSXP) {
@@ -247,15 +282,23 @@ SEXP _do_subset_xts (SEXP x, SEXP sr, SEXP sc, SEXP drop) {
         if(int_sr[i] > nrs || int_sc[j] > ncs)
           error("'i' or 'j' out of range");
         real_nindex[i] = real_oindex[int_sr[i]-1];
-        COMPLEX(result)[i+j*nr] = COMPLEX(x)[int_sr[i]-1 + ((int_sc[j]-1) * nrs)];
+        if(int_sc[j] == NA_INTEGER) {
+          COMPLEX(result)[i+j*nr].r = NA_REAL;
+          COMPLEX(result)[i+j*nr].i = NA_REAL;
+        } else
+          COMPLEX(result)[i+j*nr] = COMPLEX(x)[int_sr[i]-1 + ((int_sc[j]-1) * nrs)];
       }
     }
     copyAttributes(oindex, nindex);
-    setAttrib(result, install("index"), nindex);
+    setAttrib(result, xts_IndexSymbol, nindex);
 
     for(j=1; j<nc; j++) {
       for(i=0; i<nr; i++) {
-        COMPLEX(result)[i+j*nr] = COMPLEX(x)[int_sr[i]-1 + ((int_sc[j]-1) * nrs)];
+        if(int_sc[j] == NA_INTEGER) {
+          COMPLEX(result)[i+j*nr].r = NA_REAL;
+          COMPLEX(result)[i+j*nr].i = NA_REAL;
+        } else
+          COMPLEX(result)[i+j*nr] = COMPLEX(x)[int_sr[i]-1 + ((int_sc[j]-1) * nrs)];
       }
     }
   } else
@@ -269,7 +312,10 @@ SEXP _do_subset_xts (SEXP x, SEXP sr, SEXP sc, SEXP drop) {
         if(int_sr[i] > nrs || int_sc[j] > ncs)
           error("'i' or 'j' out of range");
         int_nindex[i] = int_oindex[int_sr[i]-1];
-        SET_STRING_ELT(result, i+j*nr, STRING_ELT(x, int_sr[i]-1 + ((int_sc[j]-1) * nrs)));
+        if(int_sc[j] == NA_INTEGER)
+          SET_STRING_ELT(result, i+j*nr, NA_STRING);
+        else
+          SET_STRING_ELT(result, i+j*nr, STRING_ELT(x, int_sr[i]-1 + ((int_sc[j]-1) * nrs)));
       }
     } else
     if(TYPEOF(nindex)==REALSXP) {
@@ -281,15 +327,21 @@ SEXP _do_subset_xts (SEXP x, SEXP sr, SEXP sc, SEXP drop) {
         if(int_sr[i] > nrs || int_sc[j] > ncs)
           error("'i' or 'j' out of range");
         real_nindex[i] = real_oindex[int_sr[i]-1];
-        SET_STRING_ELT(result, i+j*nr, STRING_ELT(x, int_sr[i]-1 + ((int_sc[j]-1) * nrs)));
+        if(int_sc[j] == NA_INTEGER)
+          SET_STRING_ELT(result, i+j*nr, NA_STRING);
+        else
+          SET_STRING_ELT(result, i+j*nr, STRING_ELT(x, int_sr[i]-1 + ((int_sc[j]-1) * nrs)));
       }
     }
     copyAttributes(oindex, nindex);
-    setAttrib(result, install("index"), nindex);
+    setAttrib(result, xts_IndexSymbol, nindex);
 
     for(j=1; j<nc; j++) {
       for(i=0; i<nr; i++) {
-        SET_STRING_ELT(result, i+j*nr, STRING_ELT(x, int_sr[i]-1 + ((int_sc[j]-1) * nrs)));
+        if(int_sc[j] == NA_INTEGER)
+          SET_STRING_ELT(result, i+j*nr, NA_STRING);
+        else
+          SET_STRING_ELT(result, i+j*nr, STRING_ELT(x, int_sr[i]-1 + ((int_sc[j]-1) * nrs)));
       }
     }
   } else
@@ -307,7 +359,10 @@ SEXP _do_subset_xts (SEXP x, SEXP sr, SEXP sc, SEXP drop) {
         if(int_sr[i] > nrs || int_sc[j] > ncs)
           error("'i' or 'j' out of range");
         int_nindex[i] = int_oindex[int_sr[i]-1];
-        RAW(result)[i+j*nr] = RAW(x)[int_sr[i]-1 + ((int_sc[j]-1) * nrs)];
+        if(int_sc[j] == NA_INTEGER)
+          RAW(result)[i+j*nr] = 0;
+        else
+          RAW(result)[i+j*nr] = RAW(x)[int_sr[i]-1 + ((int_sc[j]-1) * nrs)];
       }
     } else
     if(TYPEOF(nindex)==REALSXP) {
@@ -319,15 +374,21 @@ SEXP _do_subset_xts (SEXP x, SEXP sr, SEXP sc, SEXP drop) {
         if(int_sr[i] > nrs || int_sc[j] > ncs)
           error("'i' or 'j' out of range");
         real_nindex[i] = real_oindex[int_sr[i]-1];
-        RAW(result)[i+j*nr] = RAW(x)[int_sr[i]-1 + ((int_sc[j]-1) * nrs)];
+        if(int_sc[j] == NA_INTEGER)
+          RAW(result)[i+j*nr] = 0;
+        else
+          RAW(result)[i+j*nr] = RAW(x)[int_sr[i]-1 + ((int_sc[j]-1) * nrs)];
       }
     }
     copyAttributes(oindex, nindex);
-    setAttrib(result, install("index"), nindex);
+    setAttrib(result, xts_IndexSymbol, nindex);
 
     for(j=1; j<nc; j++) {
       for(i=0; i<nr; i++) {
-        RAW(result)[i+j*nr] = RAW(x)[int_sr[i]-1 + ((int_sc[j]-1) * nrs)];
+        if(int_sc[j] == NA_INTEGER)
+          RAW(result)[i+j*nr] = 0;
+        else
+          RAW(result)[i+j*nr] = RAW(x)[int_sr[i]-1 + ((int_sc[j]-1) * nrs)];
       }
     }
   }
@@ -348,18 +409,18 @@ SEXP _do_subset_xts (SEXP x, SEXP sr, SEXP sc, SEXP drop) {
         PROTECT(newdimnames = allocVector(VECSXP, 2));
         if (TYPEOF(dimnames) == VECSXP) {
           SET_VECTOR_ELT(newdimnames, 0,
-            ExtractSubset(VECTOR_ELT(dimnames, 0),
+            xts_ExtractSubset(VECTOR_ELT(dimnames, 0),
                   allocVector(STRSXP, nr), sr));
           SET_VECTOR_ELT(newdimnames, 1,
-            ExtractSubset(VECTOR_ELT(dimnames, 1),
+            xts_ExtractSubset(VECTOR_ELT(dimnames, 1),
                   allocVector(STRSXP, nc), sc));
         }
         else {
           SET_VECTOR_ELT(newdimnames, 0,
-            ExtractSubset(CAR(dimnames),
+            xts_ExtractSubset(CAR(dimnames),
                   allocVector(STRSXP, nr), sr));
           SET_VECTOR_ELT(newdimnames, 1,
-            ExtractSubset(CADR(dimnames),
+            xts_ExtractSubset(CADR(dimnames),
                   allocVector(STRSXP, nc), sc));
         }
         setAttrib(newdimnames, R_NamesSymbol, dimnamesnames);

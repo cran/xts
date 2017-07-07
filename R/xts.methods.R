@@ -7,7 +7,7 @@
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation, either version 3 of the License, or
+#   the Free Software Foundation, either version 2 of the License, or
 #   (at your option) any later version.
 #
 #   This program is distributed in the hope that it will be useful,
@@ -34,8 +34,9 @@ function(x, i, j, drop = FALSE, which.i=FALSE,...)
     USE_EXTRACT <- FALSE # initialize to FALSE
     if(is.null(dim(x))) {
       nr <- length(x)
-      if(nr==0)
+      if(nr==0 && !which.i)
         return( xts(rep(NA,length(index(x))), index(x))[i] )
+      nr <- length(.index(x))
       nc <- 1L
     } else {
       nr <- nrow(x)
@@ -112,7 +113,7 @@ function(x, i, j, drop = FALSE, which.i=FALSE,...)
     # subset is picky, 0's in the 'i' position cause failures
     zero.index <- binsearch(0, i, NULL)
     if(!is.na(zero.index))
-      i <- i[ -zero.index ]
+      i <- i[i!=0]  # at least one 0; remove them all
 
     if(length(i) <= 0 && USE_EXTRACT) 
       USE_EXTRACT <- FALSE
@@ -127,8 +128,8 @@ function(x, i, j, drop = FALSE, which.i=FALSE,...)
         i <- seq_len(nr)
 
       if(length(x)==0) {
-        x.tmp <- .xts(rep(NA,length(i)), .index(x)[i])
-        return((colnames(x.tmp) <- colnames(x)))
+        x.tmp <- .xts(rep(NA,length(i)), .index(x)[i], dimnames=list(NULL, colnames(x)))
+        return(x.tmp)
       } else {
         if(USE_EXTRACT) {
           return(.Call('extract_col', 
@@ -163,12 +164,15 @@ function(x, i, j, drop = FALSE, which.i=FALSE,...)
     } else
     if(is.character(j)) {
       j <- match(j, colnames(x), nomatch=0L)
+      # ensure all j are in colnames(x)
+      if(any(j==0))
+        stop("subscript out of bounds")
     }
 
     j0 <- which(!as.logical(j))
     if(length(j0)) 
       j <- j[-j0]
-    if(length(j) == 0 || (length(j)==1 && j==0)) {
+    if(length(j) == 0 || (length(j)==1 && (is.na(j) || j==0))) {
       if(missing(i))
         i <- seq_len(nr)
       return(.xts(coredata(x)[i,j,drop=FALSE], index=.index(x)[i],

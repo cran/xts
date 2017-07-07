@@ -25,13 +25,6 @@
 #include <Rdefines.h>
 #include "xts.h"
 
-/*
-#define  xts_IndexSymbol        install("index")
-#define  xts_ClassSymbol        install(".CLASS")
-#define  xts_IndexFormatSymbol  install(".indexFORMAT")
-#define  xts_IndexClassSymbol   install(".indexCLASS")
-#define  xts_ATTRIB(x)          coerceVector(do_xtsAttributes(x),LISTSXP)
-*/
 SEXP do_xtsAttributes(SEXP x)
 {
   SEXP a, values, names;
@@ -70,8 +63,9 @@ SEXP do_xtsAttributes(SEXP x)
     return R_NilValue;
   }
 
-  SET_LENGTH(values, i); /* truncate list back to i-size */
-  SET_LENGTH(names,  i);
+  /* truncate list back to i-size */
+  PROTECT(values = lengthgets(values, i)); P++;
+  PROTECT(names = lengthgets(names, i)); P++;
   setAttrib(values, R_NamesSymbol, names);
   UNPROTECT(P);
   return values;
@@ -111,8 +105,9 @@ SEXP do_xtsCoreAttributes(SEXP x)
     return R_NilValue;
   }
 
-  SET_LENGTH(values, i); /* truncate list back to i-size */
-  SET_LENGTH(names,  i);
+  /* truncate list back to i-size */
+  PROTECT(values = lengthgets(values, i)); P++;
+  PROTECT(names = lengthgets(names, i)); P++;
   setAttrib(values, R_NamesSymbol, names);
   UNPROTECT(P);
   return values;
@@ -129,7 +124,7 @@ void copyAttributes(SEXP x, SEXP y)
   if(length(attr) > 0 || y != R_NilValue) {
     PROTECT(attr); P++;
     for( ; attr != R_NilValue; attr = CDR(attr) ) {
-      if( (TAG(attr) != install("index")) &&
+      if( (TAG(attr) != xts_IndexSymbol) &&
           (TAG(attr) != R_DimSymbol)      &&
           (TAG(attr) != R_DimNamesSymbol) &&
           (TAG(attr) != R_NamesSymbol) ) {
@@ -182,3 +177,35 @@ SEXP ca (SEXP x, SEXP y)
   copy_xtsAttributes(x,y);
   return R_NilValue;
 }
+
+SEXP add_xtsCoreAttributes(SEXP _x, SEXP _index, SEXP _indexClass, SEXP _tzone,
+        SEXP _tclass, SEXP _class, SEXP _indexFormat)
+{
+  int P=0;
+  if(NAMED(_index) == 2) {
+    PROTECT(_index = duplicate(_index)); P++;
+  }
+  /* add tzone and tclass to index */
+  setAttrib(_index, xts_IndexTclassSymbol, _tclass);
+  setAttrib(_index, xts_IndexTzoneSymbol, _tzone);
+
+  if(NAMED(_x) == 2) {
+    PROTECT(_x = duplicate(_x)); P++;
+    //_x = duplicate(_x);
+  }
+  setAttrib(_x, xts_IndexSymbol, _index);              /* index */
+  setAttrib(_x, xts_IndexClassSymbol, _indexClass);    /* .indexClass */
+  setAttrib(_x, xts_IndexTZSymbol, _tzone);            /* .indexTZ */
+  setAttrib(_x, xts_IndexTclassSymbol, _tclass);       /* tclass */
+  setAttrib(_x, xts_IndexTzoneSymbol, _tzone);         /* tzone */
+  setAttrib(_x, R_ClassSymbol, _class);                /* class */
+
+  /* .indexFormat is only here because it's set in Ops.xts
+   * This should go away once this attribute is on the index */
+  if(_indexFormat != R_NilValue)
+    setAttrib(_x, xts_IndexFormatSymbol, _indexFormat);
+
+  UNPROTECT(P);
+  return(_x);
+}
+

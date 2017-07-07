@@ -7,7 +7,7 @@
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation, either version 3 of the License, or
+#   the Free Software Foundation, either version 2 of the License, or
 #   (at your option) any later version.
 #
 #   This program is distributed in the hope that it will be useful,
@@ -80,7 +80,7 @@ SEXP do_merge_xts (SEXP x, SEXP y,
     return(y);
   }
 
-  PROTECT( xindex = getAttrib(x, install("index")) );
+  PROTECT( xindex = getAttrib(x, xts_IndexSymbol) ); p++;
 
   /* convert to xts object if needed */
   if( !isXts(y) ) {
@@ -100,9 +100,9 @@ SEXP do_merge_xts (SEXP x, SEXP y,
   mode = TYPEOF(x);
 
   if( isXts(y) ) {
-    PROTECT( yindex = getAttrib(y, xts_IndexSymbol) );
+    PROTECT( yindex = getAttrib(y, xts_IndexSymbol) ); p++;
   } else {
-    PROTECT( yindex = getAttrib(x, xts_IndexSymbol) );
+    PROTECT( yindex = getAttrib(x, xts_IndexSymbol) ); p++;
   }
 
   if( TYPEOF(retside) != LGLSXP )
@@ -155,6 +155,14 @@ SEXP do_merge_xts (SEXP x, SEXP y,
   if( TYPEOF(xindex) == REALSXP ) { 
   real_xindex = REAL(xindex);
   real_yindex = REAL(yindex);
+
+  /* Check for illegal values before looping. Due to ordered index,
+   * -Inf must be first, while NA, Inf, and NaN must be last. */
+  if (!R_FINITE(real_xindex[0]) || !R_FINITE(real_xindex[nrx-1])
+   || !R_FINITE(real_yindex[0]) || !R_FINITE(real_yindex[nry-1])) {
+    error("'index' cannot contain 'NA', 'NaN', or '+/-Inf'");
+  }
+
   while( (xp + yp) <= (len + 1) ) {
     if( xp > nrx ) {
       yp++;
@@ -180,15 +188,21 @@ SEXP do_merge_xts (SEXP x, SEXP y,
       yp++;
       if(right_join) i++;
     } else
-    if(ISNA(real_xindex[ xp-1 ]) || ISNA(real_yindex[ yp-1 ])) {
-Rprintf("%f, %f\n",real_xindex[xp-1],real_yindex[yp-1]);
-      error("'NA' not allowed in 'index'");
-    }
+      error("Invalid index element comparison (should never happen)");
   } 
   } else
   if( TYPEOF(xindex) == INTSXP ) {
   int_xindex = INTEGER(xindex);
   int_yindex = INTEGER(yindex);
+
+  /* Check for NA before looping; logical ops on NA may yield surprising
+   * results. Note that the NA_integer_ will appear in the last value of
+   * the index because of sorting at the R level, even though NA_INTEGER
+   * equals INT_MIN at the C level. */
+  if (int_xindex[nrx-1] == NA_INTEGER || int_yindex[nry-1] == NA_INTEGER) {
+     error("'index' cannot contain 'NA'");
+  }
+
   while( (xp + yp) <= (len + 1) ) {
     if( xp > nrx ) {
       yp++;
@@ -211,10 +225,7 @@ Rprintf("%f, %f\n",real_xindex[xp-1],real_yindex[yp-1]);
       yp++;
       if(right_join) i++;
     } else
-    if(real_xindex[ xp-1 ]==NA_INTEGER ||
-       real_yindex[ yp-1 ]==NA_INTEGER) {
-       error("'NA' not allowed in 'index'");
-    }
+      error("Invalid index element comparison (should never happen)");
   } 
   }
 
@@ -225,14 +236,14 @@ Rprintf("%f, %f\n",real_xindex[xp-1],real_yindex[yp-1]);
     SET_xtsIndex(result, index);
     if(LOGICAL(retclass)[0])
       setAttrib(result, R_ClassSymbol, getAttrib(x, R_ClassSymbol));
-    UNPROTECT(2 + p);
+    UNPROTECT(p);
     return result;
   }
 
   int num_rows = i;
   xp = 1; yp = 1;
 
-  PROTECT( index  = allocVector(TYPEOF(xindex), num_rows) );
+  PROTECT( index  = allocVector(TYPEOF(xindex), num_rows) ); p++;
   /* coercion/matching of TYPE for x and y needs to be checked,
      either here or in the calling R code.  I suspect here is
      more useful if other function can call the C code as well. 
@@ -241,7 +252,7 @@ Rprintf("%f, %f\n",real_xindex[xp-1],real_yindex[yp-1]);
     PROTECT( x = coerceVector(x, REALSXP) ); p++;
     PROTECT( y = coerceVector(y, REALSXP) ); p++;
   }
-  PROTECT( result = allocVector(TYPEOF(x), (ncx + ncy) * num_rows) );
+  PROTECT( result = allocVector(TYPEOF(x), (ncx + ncy) * num_rows) ); p++;
 
   if( TYPEOF(fill) != TYPEOF(x) ) {
     PROTECT( fill = coerceVector(fill, TYPEOF(x)) ); p++;
@@ -927,10 +938,10 @@ Rprintf("%f, %f\n",real_xindex[xp-1],real_yindex[yp-1]);
     /* DIMNAMES */
     if(!isNull(colnames)) { // only set DimNamesSymbol if passed colnames is not NULL
       SEXP dimnames, dimnames_x, dimnames_y, newcolnames;
-      PROTECT(dimnames = allocVector(VECSXP, 2));
+      PROTECT(dimnames = allocVector(VECSXP, 2)); p++;
       PROTECT(dimnames_x = getAttrib(x, R_DimNamesSymbol)); p++;
       PROTECT(dimnames_y = getAttrib(y, R_DimNamesSymbol)); p++;
-      PROTECT(newcolnames = allocVector(STRSXP, ncx+ncy));
+      PROTECT(newcolnames = allocVector(STRSXP, ncx+ncy)); p++;
       for(i = 0; i < (ncx + ncy); i++) {
         if( i < ncx ) {
           if(!isNull(dimnames_x) && !isNull(VECTOR_ELT(dimnames_x,1))) {
@@ -958,7 +969,6 @@ Rprintf("%f, %f\n",real_xindex[xp-1],real_yindex[yp-1]);
  
       //SET_VECTOR_ELT(dimnames, 1, newcolnames); // COLNAMES are passed in
       setAttrib(result, R_DimNamesSymbol, dimnames);
-      UNPROTECT(2);
     }
   } else {
     // only used for zero-width results! xts always has dimension
@@ -974,7 +984,7 @@ Rprintf("%f, %f\n",real_xindex[xp-1],real_yindex[yp-1]);
   setAttrib(result, xts_ClassSymbol, getAttrib(x, xts_ClassSymbol));
   copy_xtsAttributes(x, result);
 
-  UNPROTECT(4 + p);
+  UNPROTECT(p);
   return result;  
 } //}}}
 
@@ -992,22 +1002,14 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
 
   SEXP argstart;
 
-  args = CDR(args);
-  PROTECT(all = CAR(args)); P++;
-  args = CDR(args);
-  PROTECT(fill = CAR(args)); P++;
-  args = CDR(args);
-  PROTECT(retclass = CAR(args)); P++;
-  args = CDR(args);
-  PROTECT(symnames = CAR(args)); P++;
-  args = CDR(args);
-  PROTECT(suffixes = CAR(args)); P++;
-  args = CDR(args);
-  PROTECT(retside = CAR(args)); P++;
-  args = CDR(args);
-  PROTECT(env = CAR(args)); P++;
-  args = CDR(args);
-  PROTECT(tzone = CAR(args)); P++;
+  args = CDR(args); all = CAR(args);
+  args = CDR(args); fill = CAR(args);
+  args = CDR(args); retclass = CAR(args);
+  args = CDR(args); symnames = CAR(args);
+  args = CDR(args); suffixes = CAR(args);
+  args = CDR(args); retside = CAR(args);
+  args = CDR(args); env = CAR(args);
+  args = CDR(args); tzone = CAR(args);
   args = CDR(args);
   // args should now correspond to the ... objects we are looking to merge 
   argstart = args; // use this to rewind list...
@@ -1029,7 +1031,7 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
   /* build an index to be used in all subsequent calls */
   args = argstart;
 
-  PROTECT(_x = CAR(args)); P++;
+  _x = CAR(args);
   args = CDR(args);
 
   int leading_non_xts = 0;
@@ -1037,19 +1039,18 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
     if( args == R_NilValue ) error("no xts object to merge");
     leading_non_xts = 1;
     /*warning("leading non-xts objects may have been dropped");*/
-    PROTECT(_x = CAR(args)); P++;
+    _x = CAR(args);
     args = CDR(args);
   }
   /* test for NULLs that may be present from cbind dispatch */
   if(!leading_non_xts) { /* leading non-xts in 2 case scenario was igoring non-xts value */
     if(n < 3 && (args == R_NilValue || (isNull(CAR(args)) && length(args) == 1))) {/* no y arg or y==NULL */
-      UNPROTECT(P);
       return(_x);
     }
   }
 
   if( args != R_NilValue) {
-    PROTECT(_y = CAR(args)); P++;
+    _y = CAR(args);
     args = CDR(args);
   } else {
     PROTECT(_y = duplicate(_x)); P++;
@@ -1070,30 +1071,32 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
       PROTECT(_y = duplicate(_x)); P++;
     }
 
-    PROTECT(_INDEX = do_merge_xts(_x,
-                                  _y, 
-                                  all,
-                                  fill,
-                                  retc,
-                                  R_NilValue,
-                                  R_NilValue, 
-                                  rets, 
-                                  env,
-                                  coerce_to_double)); P++;
+    // REPROTECT _INDEX in while loop
+    PROTECT_INDEX idx;
+    PROTECT_WITH_INDEX(_INDEX = do_merge_xts(_x,
+                                             _y,
+                                             all,
+                                             fill,
+                                             retc,
+                                             R_NilValue,
+                                             R_NilValue,
+                                             rets,
+                                             env,
+                                             coerce_to_double), &idx); P++;
 
     /* merge all objects into one zero-width common index */
     while(args != R_NilValue) { 
       if( !isNull(CAR(args)) ) {
-        PROTECT(_INDEX = do_merge_xts(_INDEX,
-                                      CAR(args),
-                                      all,
-                                      fill, 
-                                      retc,
-                                      R_NilValue,
-                                      R_NilValue,
-                                      rets, 
-                                      env,
-                                      coerce_to_double)); P++;
+        REPROTECT(_INDEX = do_merge_xts(_INDEX,
+                                        CAR(args),
+                                        all,
+                                        fill,
+                                        retc,
+                                        R_NilValue,
+                                        R_NilValue,
+                                        rets,
+                                        env,
+                                        coerce_to_double), idx);
       }
       args = CDR(args);
     }
@@ -1121,6 +1124,10 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
     SEXP ColNames, NewColNames;
     PROTECT(NewColNames = allocVector(STRSXP, ncs)); P++;
     ncs = 0;
+    // REPROTECT xtmp inside for loop
+    PROTECT_INDEX idxtmp;
+    PROTECT_WITH_INDEX(xtmp = NULL, &idxtmp); P++;
+
     for(i = 0, nc=0; args != R_NilValue; i = i+nc, args = CDR(args)) { // merge each object with index
       // i is object current being merged/copied
       // nc is offset in current object
@@ -1129,20 +1136,21 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
         continue;  // if NULL is passed, skip to the next object.
       }
 
-      xtmp = do_merge_xts(_INDEX,
-                          CAR(args),
-                          all,
-                          fill,
-                          retclass,
-            /*colnames*/R_NilValue, 
-                        R_NilValue,
-                          retside,
-                          env,
-                          coerce_to_double);
-      nc = ncols(xtmp);
-      ncs += nc;
+      REPROTECT(xtmp = do_merge_xts(_INDEX,
+                                    CAR(args),
+                                    all,
+                                    fill,
+                                    retclass,
+                        /*colnames*/R_NilValue,
+                                    R_NilValue,
+                                    retside,
+                                    env,
+                                    coerce_to_double), idxtmp);
+
       nr = nrows(xtmp);
-      PROTECT(ColNames = getAttrib(CAR(args),R_DimNamesSymbol));
+      nc = (0 == nr) ? 0 : ncols(xtmp);  // ncols(numeric(0)) == 1
+      ncs += nc;
+      PROTECT(ColNames = getAttrib(CAR(args),R_DimNamesSymbol)); P++;
       switch(TYPEOF(xtmp)) { // by type, insert merged data into result object
         case LGLSXP:
         case INTSXP:
@@ -1177,29 +1185,30 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
           }
           break;
       }
-      UNPROTECT(1); /* ColNames */
     }
 
-    SEXP dim;
-    PROTECT(dim = allocVector(INTSXP, 2)); P++;
-    INTEGER(dim)[0] = index_len;
-    INTEGER(dim)[1] = ncs;
-    setAttrib(result, R_DimSymbol, dim);
+    if(ncs > 0) {
+      SEXP dim;
+      PROTECT(dim = allocVector(INTSXP, 2)); P++;
+      INTEGER(dim)[0] = index_len;
+      INTEGER(dim)[1] = ncs;
+      setAttrib(result, R_DimSymbol, dim);
 
-    SEXP dimnames;
-    PROTECT(dimnames = allocVector(VECSXP, 2)); P++;
-    SET_VECTOR_ELT(dimnames, 0, R_NilValue); // rownames are always NULL in xts
+      SEXP dimnames;
+      PROTECT(dimnames = allocVector(VECSXP, 2)); P++;
+      SET_VECTOR_ELT(dimnames, 0, R_NilValue); // rownames are always NULL in xts
 
-    /* colnames, assure they are unique before returning */
-    SEXP s, t, unique;
-    PROTECT(s = t = allocList(3)); P++;
-    SET_TYPEOF(s, LANGSXP);
-    SETCAR(t, install("make.names")); t = CDR(t);
-    SETCAR(t, NewColNames); t = CDR(t);
-    PROTECT(unique = allocVector(LGLSXP, 1)); P++;  LOGICAL(unique)[0] = 1;
-    SETCAR(t, unique);  SET_TAG(t, install("unique"));
-    SET_VECTOR_ELT(dimnames, 1, eval(s, env));
-    setAttrib(result, R_DimNamesSymbol, dimnames);
+      /* colnames, assure they are unique before returning */
+      SEXP s, t, unique;
+      PROTECT(s = t = allocList(3)); P++;
+      SET_TYPEOF(s, LANGSXP);
+      SETCAR(t, install("make.names")); t = CDR(t);
+      SETCAR(t, NewColNames); t = CDR(t);
+      PROTECT(unique = allocVector(LGLSXP, 1)); P++;  LOGICAL(unique)[0] = 1;
+      SETCAR(t, unique);  SET_TAG(t, install("unique"));
+      SET_VECTOR_ELT(dimnames, 1, eval(s, env));
+      setAttrib(result, R_DimNamesSymbol, dimnames);
+    }
 
     SET_xtsIndex(result, GET_xtsIndex(_INDEX));
     SET_xtsIndexTZ(result, GET_xtsIndexTZ(_INDEX));
@@ -1220,19 +1229,18 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
                     coerce_to_double)); P++;
   }
 
-  SEXP index_tmp = getAttrib(result, install("index"));
-  PROTECT(index_tmp);
+  SEXP index_tmp = getAttrib(result, xts_IndexSymbol);
+  PROTECT(index_tmp); P++;
   if(isNull(tzone)) {
-    setAttrib(index_tmp, install("tzone"), 
-              getAttrib(getAttrib(_x,install("index")), install("tzone")));
+    setAttrib(index_tmp, xts_IndexTzoneSymbol,
+              getAttrib(getAttrib(_x,xts_IndexSymbol), xts_IndexTzoneSymbol));
   } else {
-    setAttrib(index_tmp, install("tzone"), tzone);
+    setAttrib(index_tmp, xts_IndexTzoneSymbol, tzone);
   }
-  copyMostAttrib(getAttrib(_x,install("index")), index_tmp);
-  setAttrib(result, install("index"), index_tmp);
-  setAttrib(result, install(".indexTZ"), getAttrib(index_tmp, install("tzone")));
-  UNPROTECT(1);
+  copyMostAttrib(getAttrib(_x,xts_IndexSymbol), index_tmp);
+  setAttrib(result, xts_IndexSymbol, index_tmp);
+  setAttrib(result, xts_IndexTZSymbol, getAttrib(index_tmp, xts_IndexTzoneSymbol));
 
-  if(P > 0) UNPROTECT(P); 
+  UNPROTECT(P);
   return(result);
 } //}}} end of mergeXts

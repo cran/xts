@@ -7,7 +7,7 @@
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation, either version 3 of the License, or
+#   the Free Software Foundation, either version 2 of the License, or
 #   (at your option) any later version.
 #
 #   This program is distributed in the hope that it will be useful,
@@ -45,12 +45,10 @@ function(x=NULL,
   if(!timeBased(order.by))
     stop("order.by requires an appropriate time-based object")
 
-  if(inherits(order.by, 'dates'))
-    tzone <- ""
-
-  if(inherits(order.by, 'Date')) {
+  if(inherits(order.by, .classesWithoutTZ)) {
     if(!missing(tzone))
-      warning(paste(sQuote('tzone'),"setting ignored for Date indexes"))
+      warning(paste(sQuote('tzone'),"setting ignored for ",
+                    paste(class(order.by), collapse=", "), " indexes"))
     tzone <- "UTC"
   }
   
@@ -64,12 +62,13 @@ function(x=NULL,
     order.by <- .POSIXct(unclass(order.by)*86400, tz=tzone)
   }
 
-
-  if(!is.null(x) && !isOrdered(order.by, strictly=!unique) ) {
+  if(!isOrdered(order.by, strictly=!unique)) {
     indx <- order(order.by)
-    if(NCOL(x) > 1 || is.matrix(x) || is.data.frame(x)) {
-      x <- x[indx,,drop=FALSE]
-    } else x <- x[indx]
+    if(!is.null(x)) {
+      if(NCOL(x) > 1 || is.matrix(x) || is.data.frame(x)) {
+        x <- x[indx,,drop=FALSE]
+      } else x <- x[indx]
+    }
     order.by <- order.by[indx]
   }
 
@@ -86,6 +85,10 @@ function(x=NULL,
     index <- as.numeric(as.POSIXct(strptime(as.character(order.by),"(%m/%d/%y %H:%M:%S)"))) #$format
   else
   index <- as.numeric(as.POSIXct(order.by))
+
+  if(any(!is.finite(index)))
+    stop("'order.by' cannot contain 'NA', 'NaN', or 'Inf'")
+
   x <- structure(.Data=x,
             index=structure(index,tzone=tzone,tclass=orderBy),
             class=c('xts','zoo'),
@@ -101,7 +104,43 @@ function(x=NULL,
 }
 
 `.xts` <-
-function(x=NULL, index, tclass=c("POSIXt","POSIXct"),
+function(x=NULL, index, tclass=c("POSIXct","POSIXt"),
+         tzone=Sys.getenv("TZ"),
+         check=TRUE, unique=FALSE, .indexCLASS=tclass, ...) {
+  if(check) {
+    if( !isOrdered(index, increasing=TRUE, strictly=unique) )
+      stop('index is not in ',ifelse(unique, 'strictly', ''),' increasing order')
+  }
+  if(!is.numeric(index) && timeBased(index))
+    index <- as.numeric(as.POSIXct(index))
+  if(!is.null(x) && NROW(x) != length(index))
+    stop("index length must match number of observations")
+  if(any(!is.finite(index)))
+    stop("'index' cannot contain 'NA', 'NaN', or 'Inf'")
+
+  if(!is.null(x)) {
+    if(!is.matrix(x))
+      x <- as.matrix(x)
+  } else
+  if(length(x) == 0 && !is.null(x)) {
+    x <- vector(storage.mode(x))
+  } else x <- numeric(0)
+
+  # don't overwrite index tzone if tzone arg is missing
+  if(missing(tzone)) {
+    if(!is.null(index.tz <- attr(index,'tzone')))
+      tzone <- index.tz
+  }
+
+  structure(.Data=x,
+            index=structure(index,tzone=tzone,tclass=.indexCLASS),
+            .indexCLASS=.indexCLASS,.indexTZ=tzone,
+            tclass=.indexCLASS,tzone=tzone,
+            class=c('xts','zoo'), ...)
+}
+
+`..xts` <-
+function(x=NULL, index, tclass=c("POSIXct","POSIXt"),
          tzone=Sys.getenv("TZ"),
          check=TRUE, unique=FALSE, .indexCLASS=tclass, ...) {
   if(check) {
@@ -121,11 +160,26 @@ function(x=NULL, index, tclass=c("POSIXt","POSIXct"),
     x <- vector(storage.mode(x))
   } else x <- numeric(0)
 
-  structure(.Data=x,
-            index=structure(index,tzone=tzone,tclass=.indexCLASS),
-            .indexCLASS=.indexCLASS,.indexTZ=tzone,
-            tclass=.indexCLASS,tzone=tzone,
-            class=c('xts','zoo'), ...)
+  # don't overwrite index tzone if tzone arg is missing
+  if(missing(tzone)) {
+    if(!is.null(index.tz <- attr(index,'tzone')))
+      tzone <- index.tz
+  }
+
+  # work-around for Ops.xts
+  dots.names <- eval(substitute(alist(...)))
+  if(hasArg(.indexFORMAT))
+    .indexFORMAT <- eval(dots.names$.indexFORMAT,parent.frame())
+  else
+    .indexFORMAT <- NULL
+  xx <- .Call("add_xtsCoreAttributes", x, index, .indexCLASS, tzone, tclass,
+              c('xts','zoo'), .indexFORMAT, PACKAGE='xts')
+  # remove .indexFORMAT and .indexTZ that come through Ops.xts
+  dots.names$.indexFORMAT <- dots.names$.indexTZ <- NULL
+  # set any user attributes
+  if(length(dots.names))
+    attributes(xx) <- c(attributes(xx), ...)
+  xx
 }
 
 `reclass` <-

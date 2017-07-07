@@ -7,7 +7,7 @@
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation, either version 3 of the License, or
+#   the Free Software Foundation, either version 2 of the License, or
 #   (at your option) any later version.
 #
 #   This program is distributed in the hope that it will be useful,
@@ -28,7 +28,7 @@
 }
 
 `as.POSIXct.numeric` <- function(x, tz="", origin='1970-01-01', ...) {
-  structure(x, class=c("POSIXt", "POSIXct"))
+  structure(x, class=c("POSIXct", "POSIXt"))
 }
 
 `as.POSIXlt.numeric` <- function(x, tz="", origin='1970-01-01', ...) {
@@ -56,7 +56,7 @@ as.POSIXlt.Date <- function(x, ...)
 #as.POSIXct.yearmon <- function(x, ...)
 #{
 #  structure(as.POSIXct("1970-01-01") + unclass(as.Date(x))*86400,
-#            class=c("POSIXt","POSIXct"))
+#            class=c("POSIXct","POSIXt"))
 #}
 #
 #as.POSIXlt.yearmon <- function(x, ...)
@@ -68,11 +68,11 @@ as.POSIXct.dates <- function(x, ...)
 {
   # need to implement our own method to correctly handle TZ
   #as.POSIXct(as.character(as.POSIXlt(x,tz="GMT")))
-  structure(as.POSIXct(as.POSIXlt(x, tz="GMT"), tz="GMT"),class=c("POSIXt","POSIXct"))
+  structure(as.POSIXct(as.POSIXlt(x, tz="GMT"), tz="GMT"),class=c("POSIXct","POSIXt"))
 }
 as.chron.POSIXct <- function(x, ...)
 {
-  if( !require('chron', quietly=TRUE))
+  if(!requireNamespace('chron', quietly=TRUE))
     as.chron <- function(...) message("package 'chron' required")
 
   structure(as.chron(as.POSIXlt(as.character(x))))
