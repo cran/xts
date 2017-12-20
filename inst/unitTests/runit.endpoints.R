@@ -197,3 +197,22 @@ test.sparse_days <- function() {
   ep <- endpoints(x, "days")
   checkIdentical(ep, 0:5)
 }
+
+# sub-second resolution on Windows
+test.sub_second_resolution <- function() {
+  x <- .xts(1:6, .POSIXct(0:5 / 10 + 0.01))
+  ep <- endpoints(x, "ms", 250)
+  checkIdentical(ep, c(0L, 3L, 5L, 6L))
+}
+
+# precision issues
+test.sub_second_resolution_exact <- function() {
+  x <- .xts(1:6, .POSIXct(0:5 / 10))
+  ep <- endpoints(x, "ms", 250)
+  checkIdentical(ep, c(0L, 3L, 5L, 6L))
+}
+test.sub_second_resolution_representation <- function() {
+  x <- .xts(1:10, .POSIXct(1.5e9 + 0:9 / 10))
+  ep <- endpoints(x, "ms", 200)
+  checkIdentical(ep, seq(0L, 10L, 2L))
+}

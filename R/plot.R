@@ -83,7 +83,7 @@ chart.lines <- function(x,
                         lty=1,
                         lwd=2,
                         lend=1,
-                        col=1:10, 
+                        col=NULL,
                         up.col=NULL, 
                         dn.col=NULL,
                         legend.loc=NULL,
@@ -93,16 +93,29 @@ chart.lines <- function(x,
   xx <- current.xts_chob()
   switch(type,
          h={
-           colors <- ifelse(x[,1] < 0, dn.col, up.col)
+           if (hasArg("col")) {
+             colors <- if (is.null(col)) 1 else col
+           } else {
+             colors <- ifelse(x[,1] < 0, dn.col, up.col)
+           }
            lines(xx$Env$xycoords$x,x[,1],lwd=2,col=colors,lend=lend,lty=1,type="h",...)
          },
          p=, l=, b=, c=, o=, s=, S=, n={
+           if(is.null(col))
+             col <- xx$Env$theme$col
+
            if(length(lty) < NCOL(x)) lty <- rep(lty, length.out = NCOL(x))
            if(length(lwd) < NCOL(x)) lwd <- rep(lwd, length.out = NCOL(x))
            if(length(col) < NCOL(x)) col <- rep(col, length.out = NCOL(x))
-           for(i in NCOL(x):1){
-             # non-equally spaced x-axis
-             lines(xx$Env$xycoords$x, x[,i], type=type, lend=lend, col=col[i], lty=lty[i], lwd=lwd[i], ...)
+
+           # ensure series only has index values in xdata subset
+           xdataSubset <- xx$Env$xdata[xx$Env$xsubset]
+           y <- merge(x, .xts(,.index(xdataSubset)), join = "right")
+           xcoords <- xx$Env$xycoords$x
+
+           for(i in NCOL(y):1) {
+             lines(xcoords, y[,i], type=type, lend=lend, col=col[i],
+                   lty=lty[i], lwd=lwd[i], ...)
            }
          },
          {
@@ -271,15 +284,15 @@ plot.xts <- function(x,
   } else {
     cs$set_asp(3)
   }
-  cs$Env$cex <- if (hasArg("cex")) eval(plot.call$cex) else 0.6
-  cs$Env$mar <- if (hasArg("mar")) eval(plot.call$mar) else c(3,2,0,2)
+  cs$Env$cex <- if (hasArg("cex")) eval.parent(plot.call$cex) else 0.6
+  cs$Env$mar <- if (hasArg("mar")) eval.parent(plot.call$mar) else c(3,2,0,2)
   cs$Env$theme$up.col <- up.col
   cs$Env$theme$dn.col <- dn.col
   
   # check for colorset or col argument
   # if col has a length of 1, replicate to NCOL(x) so we can keep it simple
   # and color each line by its index in col
-  if(hasArg("colorset")) col <- eval(plot.call$colorset)
+  if(hasArg("colorset")) col <- eval.parent(plot.call$colorset)
   if(length(col) < ncol(x)) col <- rep(col, length.out = ncol(x))
   cs$Env$theme$col <- col
   
@@ -289,9 +302,9 @@ plot.xts <- function(x,
   cs$Env$theme$grid <- grid.col
   cs$Env$theme$grid2 <- grid2
   cs$Env$theme$labels <- labels.col
-  cs$Env$theme$srt <- if (hasArg("srt")) eval(plot.call$srt) else 0
-  cs$Env$theme$las <- if (hasArg("las")) eval(plot.call$las) else 0
-  cs$Env$theme$cex.axis <- if (hasArg("cex.axis")) eval(plot.call$cex.axis) else 0.9
+  cs$Env$theme$srt <- if (hasArg("srt")) eval.parent(plot.call$srt) else 0
+  cs$Env$theme$las <- if (hasArg("las")) eval.parent(plot.call$las) else 0
+  cs$Env$theme$cex.axis <- if (hasArg("cex.axis")) eval.parent(plot.call$cex.axis) else 0.9
   cs$Env$format.labels <- format.labels
   cs$Env$major.ticks <- major.ticks
   cs$Env$minor.ticks <- minor.ticks
@@ -349,20 +362,22 @@ plot.xts <- function(x,
       if(yaxis.same){
         # set the ylim for the first panel based on all the data
         yrange <- range(cs$Env$xdata[subset], na.rm=TRUE)
-        if(all(yrange == 0)) yrange <- yrange + c(-1,1)
-        cs$set_ylim(list(structure(yrange,fixed=TRUE)))
       } else {
         # set the ylim for the first panel based on the first column
         yrange <- range(cs$Env$xdata[,1][subset], na.rm=TRUE)
-        if(all(yrange == 0)) yrange <- yrange + c(-1,1)
-        cs$set_ylim(list(structure(yrange,fixed=TRUE))) 
       }
     } else {
       # set the ylim based on all the data if this is not a multi.panel plot
       yrange <- range(cs$Env$xdata[subset], na.rm=TRUE)
-      if(all(yrange == 0)) yrange <- yrange + c(-1,1)
-      cs$set_ylim(list(structure(yrange,fixed=TRUE)))
     }
+    if(yrange[1L] == yrange[2L]) {
+      if(yrange[1L] == 0) {
+        yrange <- yrange + c(-1, 1)
+      } else {
+        yrange <- c(0.8, 1.2) * yrange[1L]
+      }
+    }
+    cs$set_ylim(list(structure(yrange, fixed=TRUE)))
     cs$Env$constant_ylim <- range(cs$Env$xdata[subset], na.rm=TRUE)
   } else {
     # use the ylim arg passed in
@@ -435,19 +450,17 @@ plot.xts <- function(x,
   if(yaxis.left){
     exp <- c(exp, 
              # left y-axis labels
-             expression(text(xlim[1]-xstep*2/3-max(strwidth(y_grid_lines(get_ylim()[[2]]))), 
-                             y_grid_lines(get_ylim()[[2]]),
+             expression(text(xlim[1], y_grid_lines(get_ylim()[[2]]),
                              noquote(format(y_grid_lines(get_ylim()[[2]]), justify="right")),
-                             col=theme$labels, srt=theme$srt, offset=0, pos=4, 
+                             col=theme$labels, srt=theme$srt, offset=1, pos=2,
                              cex=theme$cex.axis, xpd=TRUE)))
   }
   if(yaxis.right){
     exp <- c(exp, 
              # right y-axis labels
-             expression(text(xlim[2]+xstep*2/3,
-                             y_grid_lines(get_ylim()[[2]]),
+             expression(text(xlim[2], y_grid_lines(get_ylim()[[2]]),
                              noquote(format(y_grid_lines(get_ylim()[[2]]), justify="right")),
-                             col=theme$labels, srt=theme$srt, offset=0, pos=4, 
+                             col=theme$labels, srt=theme$srt, offset=1, pos=4,
                              cex=theme$cex.axis, xpd=TRUE)))
   }
   cs$add(exp, env=cs$Env, expr=TRUE)
@@ -457,14 +470,14 @@ plot.xts <- function(x,
   if(isTRUE(multi.panel)){
     # We need to plot the first "panel" here because the plot area is
     # set up based on the code above
-    lenv <- new.env()
-    lenv$xdata <- cs$Env$xdata[,1][subset]
+    lenv <- cs$new_environment()
+    lenv$xdata <- cs$Env$xdata[subset,1]
     lenv$label <- colnames(cs$Env$xdata[,1])
     lenv$type <- cs$Env$type
     if(yaxis.same){
       lenv$ylim <- cs$Env$constant_ylim
     } else {
-      lenv$ylim <- range(cs$Env$xdata[,1][subset], na.rm=TRUE)
+      lenv$ylim <- range(cs$Env$xdata[subset,1], na.rm=TRUE)
     }
     
     exp <- quote(chart.lines(xdata,
@@ -479,24 +492,24 @@ plot.xts <- function(x,
     exp <- as.expression(add.par.from.dots(exp, ...))
 
     # Add expression for the main plot
-    cs$add(exp, env=c(lenv,cs$Env), expr=TRUE)
+    cs$add(exp, env=lenv, expr=TRUE)
     text.exp <- expression(text(x=xycoords$x[2],
                                 y=ylim[2]*0.9,
                                 labels=label,
                                 col=theme$labels,
                                 adj=c(0,0),cex=1,offset=0,pos=4))
-    cs$add(text.exp,env=c(lenv, cs$Env),expr=TRUE)
+    cs$add(text.exp,env=lenv,expr=TRUE)
     
     if(NCOL(cs$Env$xdata) > 1){
       for(i in 2:NCOL(cs$Env$xdata)){
         # create a local environment
-        lenv <- new.env()
-        lenv$xdata <- cs$Env$xdata[,i][subset]
+        lenv <- cs$new_environment()
+        lenv$xdata <- cs$Env$xdata[subset,i]
         lenv$label <- cs$Env$column_names[i]
         if(yaxis.same){
           lenv$ylim <- cs$Env$constant_ylim
         } else {
-          yrange <- range(cs$Env$xdata[,i][subset], na.rm=TRUE)
+          yrange <- range(cs$Env$xdata[subset,i], na.rm=TRUE)
           if(all(yrange == 0)) yrange <- yrange + c(-1,1)
           lenv$ylim <- yrange
         }
@@ -514,7 +527,7 @@ plot.xts <- function(x,
                                     y=0.5,
                                     labels="",
                                     adj=c(0,0),cex=0.9,offset=0,pos=4))
-        cs$add(text.exp, env=c(lenv,cs$Env), expr=TRUE)
+        cs$add(text.exp, env=lenv, expr=TRUE)
         
         # Add the frame for the sub-plots
         cs$add_frame(ylim=lenv$ylim, asp=NCOL(cs$Env$xdata), fixed=TRUE)
@@ -555,26 +568,25 @@ plot.xts <- function(x,
         if(yaxis.left){
           exp <- c(exp, 
                    # y-axis labels/boxes
-                   expression(text(xlim[1]-xstep*2/3-max(strwidth(y_grid_lines(ylim))), 
-                                   y_grid_lines(ylim),
+                   expression(text(xlim[1], y_grid_lines(ylim),
                                    noquote(format(y_grid_lines(ylim),justify="right")),
-                                   col=theme$labels, srt=theme$srt, offset=0, 
-                                   pos=4, cex=theme$cex.axis, xpd=TRUE)))
+                                   col=theme$labels, srt=theme$srt, offset=1,
+                                   pos=2, cex=theme$cex.axis, xpd=TRUE)))
         }
         if(yaxis.right){
           exp <- c(exp, 
-                   expression(text(xlim[2]+xstep*2/3, y_grid_lines(ylim),
+                   expression(text(xlim[2], y_grid_lines(ylim),
                                    noquote(format(y_grid_lines(ylim),justify="right")),
-                                   col=theme$labels, srt=theme$srt, offset=0,
+                                   col=theme$labels, srt=theme$srt, offset=1,
                                    pos=4, cex=theme$cex.axis, xpd=TRUE)))
         }
-        cs$add(exp,env=c(lenv, cs$Env),expr=TRUE,no.update=TRUE)
+        cs$add(exp,env=lenv,expr=TRUE,no.update=TRUE)
         text.exp <- expression(text(x=xycoords$x[2],
                                     y=ylim[2]*0.9,
                                     labels=label,
                                     col=theme$labels,
                                     adj=c(0,0),cex=1,offset=0,pos=4))
-        cs$add(text.exp,env=c(lenv, cs$Env),expr=TRUE)
+        cs$add(text.exp,env=lenv,expr=TRUE)
       }
     }
   } else {
@@ -645,15 +657,16 @@ addPanel <- function(FUN, main="", on=NA, type="l", col=NULL, lty=1, lwd=1, pch=
 # Add a time series to an existing xts plot
 # author: Ross Bennett
 addSeries <- function(x, main="", on=NA, type="l", col=NULL, lty=1, lwd=1, pch=0, ...){
-  lenv <- new.env()
+  plot_object <- current.xts_chob()
+  lenv <- plot_object$new_environment()
   lenv$main <- main
   lenv$plot_lines <- function(x, ta, on, type, col, lty, lwd, pch, ...){
     xdata <- x$Env$xdata
     xsubset <- x$Env$xsubset
-    if(is.null(col)) col <- x$Env$theme$col
+    xDataSubset <- xdata[xsubset]
     if(all(is.na(on))){
       # Add x-axis grid lines
-      atbt <- axTicksByTime2(xdata[xsubset], ticks.on=x$Env$grid.ticks.on)
+      atbt <- axTicksByTime2(xDataSubset, ticks.on=x$Env$grid.ticks.on)
       segments(x$Env$xycoords$x[atbt],
                par("usr")[3],
                x$Env$xycoords$x[atbt],
@@ -662,46 +675,44 @@ addSeries <- function(x, main="", on=NA, type="l", col=NULL, lty=1, lwd=1, pch=0
     }
     # we can add points that are not necessarily at the points
     # on the main series
-    subset.range <- paste(start(xdata[xsubset]),
-                          end(xdata[xsubset]),sep="/")
-    ta.adj <- merge(n=.xts(1:NROW(xdata[xsubset]),
-                           .index(xdata[xsubset]), 
-                           tzone=indexTZ(xdata)),ta)[subset.range]
-    ta.x <- as.numeric(na.approx(ta.adj[,1], rule=2) )
-    ta.y <- ta.adj[,-1]
+    if(xsubset == "") {
+      subset.range <- xsubset
+    } else {
+      subset.range <- paste(start(xDataSubset), end(xDataSubset),sep="/")
+    }
+    ta.y <- merge(ta, .xts(,.index(xDataSubset), tzone=indexTZ(xdata)))[subset.range]
     chart.lines(ta.y, type=type, col=col, lty=lty, lwd=lwd, pch=pch, ...)
   }
-  # map all passed args (if any) to 'lenv' environment
-  mapply(function(name,value) { assign(name,value,envir=lenv) }, 
-         names(list(x=x,on=on,type=type,col=col,lty=lty,lwd=lwd,pch=pch,...)),
-         list(x=x,on=on,type=type,col=col,lty=lty,lwd=lwd,pch=pch,...))
-  exp <- parse(text=gsub("list","plot_lines",
-                         as.expression(substitute(list(x=current.xts_chob(),
-                                                       ta=get("x"),
-                                                       on=on,
-                                                       type=type,
-                                                       col=col,
-                                                       lty=lty,
-                                                       lwd=lwd,
-                                                       pch=pch,
-                                                       ...)))),
-               srcfile=NULL)
-  
-  plot_object <- current.xts_chob()
-  ncalls <- length(plot_object$Env$call_list)
-  plot_object$Env$call_list[[ncalls+1]] <- match.call()
+
+  # get tag/value from dots
+  expargs <- substitute(alist(ta=x,
+                              on=on,
+                              type=type,
+                              col=col,
+                              lty=lty,
+                              lwd=lwd,
+                              pch=pch,
+                              ...))
+  # capture values from caller, so we don't need to copy objects to lenv,
+  # since this gives us evaluated versions of all the object values
+  expargs <- lapply(expargs[-1L], eval, parent.frame())
+  exp <- as.call(c(quote(plot_lines),
+                   x = quote(current.xts_chob()),
+                   expargs))
+
+  plot_object$add_call(match.call())
   
   xdata <- plot_object$Env$xdata
   xsubset <- plot_object$Env$xsubset
   no.update <- FALSE
   lenv$xdata <- merge(x,xdata,retside=c(TRUE,FALSE))
   if(hasArg("ylim")) {
-    ylim <- lenv$ylim  # lenv$ylim assigned via mapply above
+    ylim <- eval.parent(substitute(alist(...))$ylim)
   } else {
     ylim <- range(lenv$xdata[xsubset], na.rm=TRUE)
     if(all(ylim == 0)) ylim <- c(-1, 1)
-    lenv$ylim <- ylim
   }
+  lenv$ylim <- ylim
   
   if(is.na(on[1])){
     # add the frame for drawdowns info
@@ -709,7 +720,7 @@ addSeries <- function(x, main="", on=NA, type="l", col=NULL, lty=1, lwd=1, pch=0
     plot_object$next_frame()
     text.exp <- expression(text(x=xlim[1], y=0.3, labels=main,
                                 col=1,adj=c(0,0),cex=0.9,offset=0,pos=4))
-    plot_object$add(text.exp, env=c(lenv,plot_object$Env), expr=TRUE)
+    plot_object$add(text.exp, env=lenv, expr=TRUE)
     
     # add frame for the data
     plot_object$add_frame(ylim=ylim,asp=1,fixed=TRUE)
@@ -746,11 +757,11 @@ addSeries <- function(x, main="", on=NA, type="l", col=NULL, lty=1, lwd=1, pch=0
                                col=theme$labels, srt=theme$srt, offset=0,
                                pos=4, cex=theme$cex.axis, xpd=TRUE)))
     }
-    plot_object$add(exp,env=c(lenv, plot_object$Env),expr=TRUE,no.update=TRUE)
+    plot_object$add(exp,env=lenv,expr=TRUE,no.update=TRUE)
   } else {
     for(i in 1:length(on)) {
       plot_object$set_frame(2*on[i]) # this is defaulting to using headers, should it be optionable?
-      plot_object$add(exp,env=c(lenv, plot_object$Env),expr=TRUE,no.update=no.update)
+      plot_object$add(exp,env=lenv,expr=TRUE,no.update=no.update)
     }
   }
   plot_object
@@ -787,7 +798,8 @@ addEventLines <- function(events, main="", on=0, lty=1, lwd=1, col=1, ...){
     if(length(col) == 1) col <- rep(col, nrow(events))
   }
   
-  lenv <- new.env()
+  plot_object <- current.xts_chob()
+  lenv <- plot_object$new_environment()
   lenv$main <- main
   lenv$plot_event_lines <- function(x, events, on, lty, lwd, col, ...){
     xdata <- x$Env$xdata
@@ -821,26 +833,24 @@ addEventLines <- function(events, main="", on=0, lty=1, lwd=1, col=1, ...){
          labels=as.character(events[,1]), 
          col=x$Env$theme$labels, ...)
   }
-  
-  plot_object <- current.xts_chob()
-  ncalls <- length(plot_object$Env$call_list)
-  plot_object$Env$call_list[[ncalls+1]] <- match.call()
+
+  # get tag/value from dots
+  expargs <- substitute(alist(events=events,
+                              on=on,
+                              lty=lty,
+                              lwd=lwd,
+                              col=col,
+                              ...))
+  # capture values from caller, so we don't need to copy objects to lenv,
+  # since this gives us evaluated versions of all the object values
+  expargs <- lapply(expargs[-1L], eval, parent.frame())
+  exp <- as.call(c(quote(plot_event_lines),
+                   x = quote(current.xts_chob()),
+                   expargs))
+
+  plot_object$add_call(match.call())
   
   if(is.na(on[1])){
-    # map all passed args (if any) to 'lenv' environment
-    mapply(function(name,value) { assign(name,value,envir=lenv) }, 
-           names(list(events=events,on=on,lty=lty,lwd=lwd,col=col,...)),
-           list(events=events,on=on,lty=lty,lwd=lwd,col=col,...))
-    exp <- parse(text=gsub("list","plot_event_lines",
-                           as.expression(substitute(list(x=current.xts_chob(),
-                                                         events=get("events"),
-                                                         on=on,
-                                                         lty=lty,
-                                                         lwd=lwd,
-                                                         col=col,
-                                                         ...)))),
-                 srcfile=NULL)
-    
     xdata <- plot_object$Env$xdata
     xsubset <- plot_object$Env$xsubset
     no.update <- FALSE
@@ -853,7 +863,7 @@ addEventLines <- function(events, main="", on=0, lty=1, lwd=1, col=1, ...){
     plot_object$next_frame()
     text.exp <- expression(text(x=xlim[1], y=0.3, labels=main,
                                 col=1,adj=c(0,0),cex=0.9,offset=0,pos=4))
-    plot_object$add(text.exp, env=c(lenv,plot_object$Env), expr=TRUE)
+    plot_object$add(text.exp, env=lenv, expr=TRUE)
     
     # add frame for the data
     plot_object$add_frame(ylim=ylim,asp=1,fixed=TRUE)
@@ -890,27 +900,14 @@ addEventLines <- function(events, main="", on=0, lty=1, lwd=1, col=1, ...){
                                col=theme$labels, srt=theme$srt, offset=0,
                                pos=4, cex=theme$cex.axis, xpd=TRUE)))
     }
-    plot_object$add(exp,env=c(lenv, plot_object$Env),expr=TRUE,no.update=TRUE)
+    plot_object$add(exp,env=lenv,expr=TRUE,no.update=TRUE)
   } else {
     for(i in 1:length(on)) {
       ind <- on[i]
       no.update <- FALSE
-      # map all passed args (if any) to 'lenv' environment
-      mapply(function(name,value) { assign(name,value,envir=lenv) }, 
-             names(list(events=events,on=ind,lty=lty,lwd=lwd,col=col,...)),
-             list(events=events,on=ind,lty=lty,lwd=lwd,col=col,...))
-      exp <- parse(text=gsub("list","plot_event_lines",
-                             as.expression(substitute(list(x=current.xts_chob(),
-                                                           events=get("events"),
-                                                           on=ind,
-                                                           lty=lty,
-                                                           lwd=lwd,
-                                                           col=col,
-                                                           ...)))),
-                   srcfile=NULL)
-      
+
       plot_object$set_frame(2*on[i]) # this is defaulting to using headers, should it be optionable?
-      plot_object$add(exp,env=c(lenv, plot_object$Env),expr=TRUE,no.update=no.update)
+      plot_object$add(exp,env=lenv,expr=TRUE,no.update=no.update)
     }
   }
   plot_object
@@ -922,7 +919,8 @@ addLegend <- function(legend.loc="topright", legend.names=NULL, col=NULL, ncol=1
   if(!is.na(on[1]))
     if(on[1] == 0) on[1] <- current_panel()
   
-  lenv <- new.env()
+  plot_object <- current.xts_chob()
+  lenv <- plot_object$new_environment()
   lenv$plot_legend <- function(x, legend.loc, legend.names, col, ncol, on, bty, text.col, ...){
     if(is.na(on[1])){
       yrange <- c(0, 1)
@@ -952,58 +950,45 @@ addLegend <- function(legend.loc="topright", legend.names=NULL, col=NULL, ncol=1
   }
   
   # store the call
-  plot_object <- current.xts_chob()
-  ncalls <- length(plot_object$Env$call_list)
-  plot_object$Env$call_list[[ncalls+1]] <- match.call()
+  plot_object$add_call(match.call())
   
+  # get tag/value from dots
+  expargs <- substitute(alist(legend.loc=legend.loc,
+                              legend.names=legend.names,
+                              col=col,
+                              ncol=ncol,
+                              on=on,
+                              ...))
+  # capture values from caller, so we don't need to copy objects to lenv,
+  # since this gives us evaluated versions of all the object values
+  expargs <- lapply(expargs[-1L], eval, parent.frame())
+  exp <- as.call(c(quote(plot_legend),
+                   x = quote(current.xts_chob()),
+                   expargs))
+
+
   # if on[1] is NA, then add a new frame for the legend
   if(is.na(on[1])){
-    # map all passed args (if any) to 'lenv' environment
-    mapply(function(name,value) { assign(name,value,envir=lenv) }, 
-           names(list(legend.loc=legend.loc, legend.names=legend.names, col=col, ncol=ncol, on=on,...)),
-           list(legend.loc=legend.loc, legend.names=legend.names, col=col, ncol=ncol, on=on,...))
-    exp <- parse(text=gsub("list","plot_legend",
-                           as.expression(substitute(list(x=current.xts_chob(),
-                                                         legend.loc=legend.loc,
-                                                         legend.names=legend.names,
-                                                         col=col,
-                                                         ncol=ncol,
-                                                         on=on,
-                                                         ...)))),
-                 srcfile=NULL)
-    
     # add frame for spacing
     plot_object$add_frame(ylim=c(0,1),asp=0.25)
     plot_object$next_frame()
     text.exp <- expression(text(x=xlim[1], y=0.3, labels=main,
                                 col=theme$labels,adj=c(0,0),cex=0.9,offset=0,pos=4))
-    plot_object$add(text.exp, env=c(lenv,plot_object$Env), expr=TRUE)
+    plot_object$add(text.exp, env=lenv, expr=TRUE)
     
     # add frame for the legend panel
     plot_object$add_frame(ylim=c(0,1),asp=0.8,fixed=TRUE)
     plot_object$next_frame()
     
     # add plot_legend expression
-    plot_object$add(exp,env=c(lenv, plot_object$Env),expr=TRUE,no.update=TRUE)
+    plot_object$add(exp,env=lenv,expr=TRUE,no.update=TRUE)
   } else {
     for(i in 1:length(on)) {
       ind <- on[i]
       no.update <- FALSE
-      # map all passed args (if any) to 'lenv' environment
-      mapply(function(name,value) { assign(name,value,envir=lenv) }, 
-             names(list(legend.loc=legend.loc, legend.names=legend.names, col=col, ncol=ncol, on=on,...)),
-             list(legend.loc=legend.loc, legend.names=legend.names, col=col, ncol=ncol, on=on,...))
-      exp <- parse(text=gsub("list","plot_legend",
-                             as.expression(substitute(list(x=current.xts_chob(),
-                                                           legend.loc=legend.loc,
-                                                           legend.names=legend.names,
-                                                           col=col,
-                                                           ncol=ncol,
-                                                           on=on,
-                                                           ...)))),
-                   srcfile=NULL)
+
       plot_object$set_frame(2*on[i]) # this is defaulting to using headers, should it be optionable?
-      plot_object$add(exp,env=c(lenv, plot_object$Env),expr=TRUE,no.update=no.update)
+      plot_object$add(exp,env=lenv,expr=TRUE,no.update=no.update)
     }
   }
   plot_object
@@ -1035,7 +1020,8 @@ addPolygon <- function(x, y=NULL, main="", on=NA, col=NULL, ...){
   if(!is.null(y)) stop("y is not null")
   if(ncol(x) > 2) warning("more than 2 columns detected in x, only the first 2 will be used")
   
-  lenv <- new.env()
+  plot_object <- current.xts_chob()
+  lenv <- plot_object$new_environment()
   lenv$main <- main
   lenv$plot_lines <- function(x, ta, on, col, ...){
     xdata <- x$Env$xdata
@@ -1071,39 +1057,39 @@ addPolygon <- function(x, y=NULL, main="", on=NA, col=NULL, ...){
     yl <- as.vector(coredata(ta.y[,2]))
     polygon(x=xx, y=c(yl[1], yu, rev(yl)), border=NA, col=col, ...)
   }
-  # map all passed args (if any) to 'lenv' environment
-  mapply(function(name,value) { assign(name,value,envir=lenv) }, 
-         names(list(x=x,on=on,col=col,...)),
-         list(x=x,on=on,col=col,...))
-  exp <- parse(text=gsub("list","plot_lines",
-                         as.expression(substitute(list(x=current.xts_chob(),
-                                                       ta=get("x"),
-                                                       on=on,
-                                                       col=col,
-                                                       ...)))),
-               srcfile=NULL)
-  
-  plot_object <- current.xts_chob()
-  ncalls <- length(plot_object$Env$call_list)
-  plot_object$Env$call_list[[ncalls+1]] <- match.call()
+
+  # get tag/value from dots
+  expargs <- substitute(alist(ta=x,
+                              col=col,
+                              on=on,
+                              ...))
+  # capture values from caller, so we don't need to copy objects to lenv,
+  # since this gives us evaluated versions of all the object values
+  expargs <- lapply(expargs[-1L], eval, parent.frame())
+  exp <- as.call(c(quote(plot_lines),
+                   x = quote(current.xts_chob()),
+                   expargs))
+
+  plot_object$add_call(match.call())
   
   xdata <- plot_object$Env$xdata
   xsubset <- plot_object$Env$xsubset
   no.update <- FALSE
   lenv$xdata <- merge(x,xdata,retside=c(TRUE,FALSE))
   if(hasArg("ylim")) {
-    ylim <- lenv$ylim  # lenv$ylim assigned via mapply above
+    ylim <- eval.parent(substitute(alist(...))$ylim)
   } else {
     ylim <- range(lenv$xdata[xsubset], na.rm=TRUE)
-    lenv$ylim <- ylim
+    if(all(ylim == 0)) ylim <- c(-1, 1)
   }
+  lenv$ylim <- ylim
   
   if(is.na(on[1])){
     plot_object$add_frame(ylim=c(0,1),asp=0.25)
     plot_object$next_frame()
     text.exp <- expression(text(x=xlim[1], y=0.3, labels=main,
                                 col=1,adj=c(0,0),cex=0.9,offset=0,pos=4))
-    plot_object$add(text.exp, env=c(lenv,plot_object$Env), expr=TRUE)
+    plot_object$add(text.exp, env=lenv, expr=TRUE)
     
     # add frame for the data
     plot_object$add_frame(ylim=ylim,asp=1,fixed=TRUE)
@@ -1126,25 +1112,23 @@ addPolygon <- function(x, y=NULL, main="", on=NA, col=NULL, ...){
     if(plot_object$Env$theme$lylab){
       exp <- c(exp, 
                # y-axis labels/boxes
-               expression(text(xlim[1]-xstep*2/3-max(strwidth(y_grid_lines(ylim))), 
-                               y_grid_lines(ylim),
+               expression(text(xlim[1], y_grid_lines(ylim),
                                noquote(format(y_grid_lines(ylim),justify="right")),
-                               col=theme$labels, srt=theme$srt, offset=0, 
-                               pos=4, cex=theme$cex.axis, xpd=TRUE)))
+                               col=theme$labels, srt=theme$srt, offset=1,
+                               pos=2, cex=theme$cex.axis, xpd=TRUE)))
     }
     if(plot_object$Env$theme$rylab){
       exp <- c(exp, 
-               expression(text(xlim[2]+xstep*2/3, 
-                               y_grid_lines(ylim),
+               expression(text(xlim[2], y_grid_lines(ylim),
                                noquote(format(y_grid_lines(ylim),justify="right")),
-                               col=theme$labels, srt=theme$srt, offset=0,
+                               col=theme$labels, srt=theme$srt, offset=1,
                                pos=4, cex=theme$cex.axis, xpd=TRUE)))
     }
-    plot_object$add(exp,env=c(lenv, plot_object$Env),expr=TRUE,no.update=TRUE)
+    plot_object$add(exp,env=lenv,expr=TRUE,no.update=TRUE)
   } else {
     for(i in 1:length(on)) {
       plot_object$set_frame(2*on[i]) # this is defaulting to using headers, should it be optionable?
-      plot_object$add(exp,env=c(lenv, plot_object$Env),expr=TRUE,no.update=no.update)
+      plot_object$add(exp,env=lenv,expr=TRUE,no.update=no.update)
     }
   }
   plot_object
@@ -1347,7 +1331,14 @@ new.replot_xts <- function(frame=1,asp=1,xlim=c(1,10),ylim=list(structure(c(1,10
     # xdata should be either coming from Env or if lenv, lenv
     set_ylim(ylim)
   }
-  
+
+  # calls
+  add_call <- function(call.) {
+    stopifnot(is.call(call.))
+    ncalls <- length(Env$call_list)
+    Env$call_list[[ncalls+1]] <- call.
+  }
+
   # return
   replot_env <- new.env()
   class(replot_env) <- c("replot_xts","environment")
@@ -1371,6 +1362,9 @@ new.replot_xts <- function(frame=1,asp=1,xlim=c(1,10),ylim=list(structure(c(1,10
   replot_env$set_ylim <- set_ylim
   replot_env$get_ylim <- get_ylim
   replot_env$set_pad <- set_pad
+  replot_env$add_call <- add_call
+
+  replot_env$new_environment <- function() { new.env(TRUE, Env) }
   return(replot_env)
 }
 
@@ -1381,15 +1375,16 @@ str.replot_xts <- function(x, ...) {
 print.replot_xts <- function(x, ...) plot(x,...)
 plot.replot_xts <- function(x, ...) {
   # must set the background color before calling plot.new
-  par(bg=x$Env$theme$bg)
+  obg <- par(bg = x$Env$theme$bg)
   plot.new()
   assign(".xts_chob",x,.plotxtsEnv)
-  cex <- par(cex=x$Env$cex)
-  mar <- par(mar=x$Env$mar)
-  if(.Device=="X11") # only reasonable way to fix X11/quartz issue
-    par(cex=x$Env$cex * 1.5)
-  oxpd <- par(xpd=FALSE)
+
+  # only reasonable way to fix X11/quartz issue
+  ocex <- par(cex = if(.Device == "X11") x$Env$cex else x$Env$cex * 1.5)
+  omar <- par(mar = x$Env$mar)
+  oxpd <- par(xpd = FALSE)
   usr <- par("usr")
+
   # plot negative (underlay) actions
   last.frame <- x$get_frame()
   x$update_frames()
@@ -1421,8 +1416,9 @@ plot.replot_xts <- function(x, ...) {
   )
 
   x$set_frame(abs(last.frame),clip=FALSE)
-  do.call("clip",as.list(usr))
-  par(xpd=oxpd,cex=cex$cex,mar=mar$mar, bg=x$Env$theme$bg)
+  do.call("clip", as.list(usr))  # reset clipping region
+  # reset par
+  par(xpd = oxpd$xpd, cex = ocex$cex, mar = omar$mar, bg = obg$bg)
   invisible(x$Env$actions)
 }
 
