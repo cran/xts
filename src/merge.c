@@ -114,6 +114,7 @@ SEXP do_merge_xts (SEXP x, SEXP y,
   if( LENGTH(x)==0 || INTEGER(retside)[0]==0 ) {
     nrx = nrows(xindex);
     ncx = 0;
+    PROTECT(x = coerceVector(x, TYPEOF(y))); p++;
   }
   
   nry = nrows(y);
@@ -122,6 +123,7 @@ SEXP do_merge_xts (SEXP x, SEXP y,
   if( LENGTH(y)==0 || INTEGER(retside)[1]==0) {
     nry = nrows(yindex);
     ncy = 0;
+    PROTECT(y = coerceVector(y, TYPEOF(x))); p++;
   }
 
   len = nrx + nry;
@@ -1023,10 +1025,13 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
   int coerce_to_double=0;
   if(args != R_NilValue) type_of = TYPEOF(CAR(args));
   while(args != R_NilValue) {
-    if( length(CAR(args)) > 0 )
+    if(length(CAR(args)) > 0) {
       ncs += ncols(CAR(args));
-    if(TYPEOF(CAR(args)) != type_of)
-      coerce_to_double = 1;  /* need to convert all objects if one needs to be converted */
+      /* need to convert all objects if one non-zero-width needs to be converted */
+      if(TYPEOF(CAR(args)) != type_of) {
+        coerce_to_double = 1;
+      }
+    }
     args = CDR(args);
     n++;
   }
@@ -1129,8 +1134,9 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
     PROTECT(NewColNames = allocVector(STRSXP, ncs)); P++;
     ncs = 0;
     // REPROTECT xtmp inside for loop
-    PROTECT_INDEX idxtmp;
+    PROTECT_INDEX idxtmp, cnmtmp;
     PROTECT_WITH_INDEX(xtmp = NULL, &idxtmp); P++;
+    PROTECT_WITH_INDEX(ColNames = NULL, &cnmtmp); P++;
 
     for(i = 0, nc=0; args != R_NilValue; i = i+nc, args = CDR(args)) { // merge each object with index
       // i is object current being merged/copied
@@ -1154,7 +1160,7 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
       nr = nrows(xtmp);
       nc = (0 == nr) ? 0 : ncols(xtmp);  // ncols(numeric(0)) == 1
       ncs += nc;
-      PROTECT(ColNames = getAttrib(CAR(args),R_DimNamesSymbol)); P++;
+      REPROTECT(ColNames = getAttrib(CAR(args),R_DimNamesSymbol), cnmtmp);
       switch(TYPEOF(xtmp)) { // by type, insert merged data into result object
         case LGLSXP:
         case INTSXP:
