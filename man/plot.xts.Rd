@@ -9,13 +9,13 @@
   dn.col = NULL, bg = "#FFFFFF", type = "l", lty = 1, lwd = 2, lend = 1,
   main = deparse(substitute(x)), observation.based = FALSE,
   ylim = NULL, yaxis.same = TRUE, yaxis.left = TRUE, yaxis.right = TRUE,
-  major.ticks = "months", minor.ticks = NULL,
-  grid.ticks.on = "months", grid.ticks.lwd = 1, grid.ticks.lty = 1,
+  major.ticks = "auto", minor.ticks = NULL,
+  grid.ticks.on = "auto", grid.ticks.lwd = 1, grid.ticks.lty = 1,
   grid.col = "darkgray", labels.col = "#333333", format.labels = TRUE,
   grid2 = "#F5F5F5", legend.loc = NULL)
 \method{lines}{xts}(x, ..., main = "", on = 0, col = NULL, type = "l",
-  lty = 1, lwd = 1, pch = 0)
-\method{points}{xts}(x, ..., main = "", on = 0, col = NULL, pch = 0)
+  lty = 1, lwd = 1, pch = 1)
+\method{points}{xts}(x, ..., main = "", on = 0, col = NULL, pch = 1)
 }
 \arguments{
 \item{x}{xts object}
@@ -62,11 +62,15 @@ separate panel.}
 
 \item{yaxis.right}{if TRUE, draws the y axis on the right}
 
-\item{major.ticks}{period to draw the ticks and labels on the x-axis}
+\item{major.ticks}{period that specifies where tick marks and labels will be
+  drawn on the x-axis. See Details for possible values.}
 
-\item{minor.ticks}{period to draw minor ticks on the x-axis. If \code{NULL}, minor ticks are not drawn.}
+\item{minor.ticks}{period that specifies where minor ticks on will be drawn on
+  the x-axis. If \code{NULL}, minor ticks are not drawn. See Details for
+  possible values.}
 
-\item{grid.ticks.on}{period to draw the vertical grid lines on}
+\item{grid.ticks.on}{period that specifies where vertical grid lines will be
+  drawn. See Details for possible values.}
 
 \item{grid.ticks.lwd}{line width of the grid}
 
@@ -91,6 +95,15 @@ The default, \code{on=0}, will add to the active panel. The active panel is
 defined as the panel on which the most recent action was performed. Note that
 only the first element of \code{on} is checked for the default behavior to
 add to the last active panel.}
+}
+\details{
+  Possible values for arguments \code{major.ticks}, \code{minor.ticks},
+  and \code{grid.ticks.on} include \sQuote{auto}, \sQuote{minute},
+  \sQuote{hourly}, \sQuote{daily}, \sQuote{weekly}, \sQuote{monthly},
+  \sQuote{quarterly}, and \sQuote{yearly}. The default is \sQuote{auto}, which
+  attempts to determine sensible locations from the periodicity and locations
+  of observations. The other values are based on the output from
+  \code{periodicity}.
 }
 \description{
 Plotting for xts objects.

@@ -1,35 +1,56 @@
-#include <R.h>
+/*
+#   xts: eXtensible time-series
+#
+#   Copyright (C) 2008  Jeffrey A. Ryan jeff.a.ryan @ gmail.com
+#
+#   Contributions from Joshua M. Ulrich
+#
+#   This program is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation, either version 2 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+
 #include <R.h>
 #include "xts.h" /* for coredata_xts */
 
-SEXP make_unique (SEXP index, SEXP eps_) {
-  SEXP newindex;
-  int P=0, len, i;
-  len=length(index);
-
+SEXP make_unique (SEXP index_, SEXP eps_) {
+  int P = 0, i;
+  int len = length(index_);
   double eps = asReal(eps_);
-  double *index_real,
-         *newindex_real;
 
-  if( TYPEOF(index) == INTSXP) {
-    PROTECT(index = coerceVector(index,REALSXP)); P++;
+  if (TYPEOF(index_) == INTSXP) {
+    PROTECT(index_ = coerceVector(index_, REALSXP)); P++;
   }
   
-  PROTECT(newindex = allocVector(REALSXP, length(index))); P++;
-  copyAttributes(index, newindex);
-  index_real = REAL(index);
-  newindex_real = REAL(newindex);
+  SEXP newindex_ = PROTECT(allocVector(REALSXP, len)); P++;
+  copyAttributes(index_, newindex_);
+  double *newindex_real = REAL(newindex_);
+  memcpy(REAL(newindex_), REAL(index_), len * sizeof(double));
 
-  newindex_real[0] = index_real[0]; 
+  double last_index = newindex_real[0];
+  int warn_once = 1;
   for(i=1; i<len; i++) {
-    if(index_real[i-1] == index_real[i])
+    if(newindex_real[i] <= newindex_real[i-1]) {
+      if(warn_once && last_index != newindex_real[i]) {
+        warn_once = 0;
+        warning("index value is unique but will be replaced; it is less than the cumulative epsilon for the preceding duplicate index values");
+      }
       newindex_real[i] = newindex_real[i-1] + eps;
-    else
-      newindex_real[i] = index_real[i];
+    }
   }
 
   UNPROTECT(P);
-  return(newindex);
+  return newindex_;
 }
 
 SEXP make_index_unique (SEXP x_, SEXP eps_) {

@@ -1,143 +1,153 @@
+/*
+#   xts: eXtensible time-series
+#
+#   Copyright (C) 2008  Jeffrey A. Ryan jeff.a.ryan @ gmail.com
+#
+#   Contributions from Joshua M. Ulrich
+#
+#   This program is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation, either version 2 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+
 #include <R.h>
 #include <Rinternals.h>
 #include <Rmath.h>
 
-SEXP binsearch (SEXP key, SEXP vec, SEXP start)
-{ 
-  int *int_vec;
-  int *int_key;
-  double *real_vec;
-  double *real_key;
+/* Binary search range to find interval written by Corwin Joy, with
+ * contributions by Joshua Ulrich
+ */
 
-  int len_vec = length(vec);
-  int rec = -1;
-  int mid;
-  int lo=1, hi=length(vec);
-  if(isNull(vec)) {
-    if(isNull(start)) {
-      return ScalarInteger(NA_INTEGER);
-    } else {
-      return ScalarInteger(LOGICAL(start)[0]);
-    }
-  }
+struct keyvec {
+  double *dvec;
+  double dkey;
+  int *ivec;
+  int ikey;
+};
 
-  
-  if(TYPEOF(vec) == INTSXP) {
-  PROTECT(key = coerceVector(key, INTSXP));
-  int_vec = INTEGER(vec);
-  int_key = INTEGER(key);
-
-  while(hi >= lo) {
-    mid = (int)((lo+hi)/2);
-    if(mid == 0) {
-      UNPROTECT(1);
-      return ScalarInteger(NA_INTEGER);
-    }
-    //if(mid != 0 && INTEGER(key)[0] < INTEGER(vec)[mid]) {
-    if(mid != 0 && int_key[0] < int_vec[mid-1]) {
-      hi = mid-1;
-    } 
-    //else if(mid != 0 && INTEGER(key)[0] > INTEGER(vec)[mid]) {
-    else if(mid != 0 && int_key[0] > int_vec[mid-1]) {
-      lo = mid+1;
-    }
-    else {
-      if(!isNull(start)) {
-        if(!LOGICAL(start)[0]) {
-          while(1) {
-            //if(mid == length(vec) || INTEGER(vec)[mid+1] != INTEGER(key)[0])
-            if(mid == len_vec || int_vec[mid] != int_key[0])
-              break;
-            mid++;
-          }
-        } else {
-          while(1) {
-            //if(mid == 1 || INTEGER(vec)[mid-1] != INTEGER(key)[0])
-            if(mid == 1 || int_vec[mid-2] != int_key[0])
-              break;
-            mid--;
-          }
-        }
-      }
-      rec = mid;
-      break;
-    }
-  }
-  if(isNull(start) && rec == -1) {
-    UNPROTECT(1);
-    return ScalarInteger(NA_INTEGER);
-  }
-  if(rec == -1) {
-    if(LOGICAL(start)[0]) {
-      UNPROTECT(1);
-      return ScalarInteger(lo);
-    } else {
-      UNPROTECT(1);
-      return ScalarInteger(hi);
-    }
-  } else { 
-      UNPROTECT(1);
-      return ScalarInteger(rec);
-  }
-
-  } else 
-  if(TYPEOF(vec) == REALSXP) {
-  PROTECT(key = coerceVector(key,REALSXP));
-  real_vec = REAL(vec);
-  real_key = REAL(key);
-
-  while(hi >= lo) {
-    mid = (int)((lo+hi)/2);
-    if(mid == 0) {
-      UNPROTECT(1);
-      return ScalarInteger(NA_INTEGER);
-    }
-    //if(mid != 0 && REAL(key)[0] < REAL(vec)[mid]) {
-    if(mid != 0 && real_key[0] < real_vec[mid-1]) {
-      hi = mid-1;
-    } 
-    //else if(mid != 0 && REAL(key)[0] > REAL(vec)[mid]) {
-    else if(mid != 0 && real_key[0] > real_vec[mid-1]) {
-      lo = mid+1;
-    }
-    else {
-      if(!isNull(start)) {
-        if(!LOGICAL(start)[0]) {
-          while(1) {
-            //if(mid == length(vec) || REAL(vec)[mid+1] != REAL(key)[0])
-            if(mid == len_vec || real_vec[mid] != real_key[0])
-              break;
-            mid++;
-          }
-        } else {
-          while(1) {
-            //if(mid == 1 || REAL(vec)[mid-1] != REAL(key)[0])
-            if(mid == 1 || real_vec[mid-2] != real_key[0])
-              break;
-            mid--;
-          }
-        }
-      }
-      rec = mid;
-      break;
-    }
-  }
-  if(isNull(start) && rec == -1) {
-    UNPROTECT(1);
-    return ScalarInteger(NA_INTEGER);
-  }
-  if(rec == -1) {
-    if(LOGICAL(start)[0]) {
-      UNPROTECT(1);
-      return ScalarInteger(lo);
-    } else {
-      UNPROTECT(1);
-      return ScalarInteger(hi);
-    }
-  } else { 
-   UNPROTECT(1); return ScalarInteger(rec);
-  }
-  }
-  return R_NilValue; /* satisfy the compiler */
+/* Predicate function definition and functions to determine which of the
+ * two groups contains the value being searched for. Note that they're all
+ * 'static inline' to hopefully help with the compiler optimizations.
+ */
+typedef int (*bound_comparer)(const struct keyvec, const int);
+static inline int
+cmp_dbl_upper(const struct keyvec kv, const int i)
+{
+  const double cv = kv.dvec[i];
+  const double ck = kv.dkey;
+  return cv > ck;
+}
+static inline int
+cmp_dbl_lower(const struct keyvec kv, const int i)
+{
+  const double cv = kv.dvec[i];
+  const double ck = kv.dkey;
+  return cv >= ck;
+}
+static inline int
+cmp_int_upper(const struct keyvec kv, const int i)
+{
+  const int cv = kv.ivec[i];
+  const int ck = kv.ikey;
+  return cv > ck;
+}
+static inline int
+cmp_int_lower(const struct keyvec kv, const int i)
+{
+  const int cv = kv.ivec[i];
+  const int ck = kv.ikey;
+  return cv >= ck;
 }
 
+/* Binary search function */
+SEXP binsearch(SEXP key, SEXP vec, SEXP start)
+{
+  if (!isLogical(start)) {
+    error("start must be specified as true or false");
+  }
+
+  if (length(vec) < 1 || length(key) < 1) {
+    return ScalarInteger(NA_INTEGER);
+  }
+
+  int use_start = LOGICAL(start)[0];
+  bound_comparer cmp_func = NULL;
+  struct keyvec data;
+
+  switch (TYPEOF(vec)) {
+    case REALSXP:
+      data.dkey = REAL(key)[0];
+      data.dvec = REAL(vec);
+      cmp_func = (use_start) ? cmp_dbl_lower : cmp_dbl_upper;
+      if (!R_finite(data.dkey)) {
+        return ScalarInteger(NA_INTEGER);
+      }
+      break;
+    case INTSXP:
+      data.ikey = INTEGER(key)[0];
+      data.ivec = INTEGER(vec);
+      cmp_func = (use_start) ? cmp_int_lower : cmp_int_upper;
+      if (NA_INTEGER == data.ikey) {
+        return ScalarInteger(NA_INTEGER);
+      }
+      break;
+    default:
+      error("unsupported type");
+  }
+
+  int mid;
+  int lo = 0;
+  int hi = length(vec) - 1;
+
+  while (lo < hi) {
+    mid = lo + (hi - lo) / 2;
+    if (cmp_func(data, mid)) {
+      hi = mid;
+    }
+    else {
+      lo = mid + 1;
+    }
+  }
+
+  /* 'lo' contains the smallest index where cmp_func() is true, but we need
+   * to handle edge cases where 'lo' is at the max/min end of the vector.
+   */
+  if (use_start) {
+    /* cmp_func() := vector[index] >= key when start == true, and we need
+     * to return the smallest index subject to vector[index] >= key.
+     */
+    if (!cmp_func(data, length(vec)-1)) {
+      /* entire vector < key */
+      return ScalarInteger(NA_INTEGER);
+    }
+  } else {
+    /* cmp_func() := vector[index] > key when start == false, and we need
+     * to return the largest index subject to vector[index] <= key.
+     */
+    if (cmp_func(data, lo)) {
+      /* previous index value must satisfy vector[index] <= key, unless
+       * current index value is zero.
+       */
+      lo--;
+      if (lo < 0) {
+        /* entire vector > key */
+        return ScalarInteger(NA_INTEGER);
+      }
+    }
+  }
+
+  /* Convert from 0-based index to 1-based index */
+  lo++;
+
+  return ScalarInteger(lo);
+}

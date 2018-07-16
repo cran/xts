@@ -132,40 +132,6 @@ function(x=NULL, index, tclass=c("POSIXct","POSIXt"),
       tzone <- index.tz
   }
 
-  structure(.Data=x,
-            index=structure(index,tzone=tzone,tclass=.indexCLASS),
-            .indexCLASS=.indexCLASS,.indexTZ=tzone,
-            tclass=.indexCLASS,tzone=tzone,
-            class=c('xts','zoo'), ...)
-}
-
-`..xts` <-
-function(x=NULL, index, tclass=c("POSIXct","POSIXt"),
-         tzone=Sys.getenv("TZ"),
-         check=TRUE, unique=FALSE, .indexCLASS=tclass, ...) {
-  if(check) {
-    if( !isOrdered(index, increasing=TRUE, strictly=unique) )
-      stop('index is not in ',ifelse(unique, 'strictly', ''),' increasing order')
-  }
-  if(!is.numeric(index) && timeBased(index))
-    index <- as.numeric(as.POSIXct(index))
-  if(!is.null(x) && NROW(x) != length(index))
-    stop("index length must match number of observations")
-
-  if(!is.null(x)) {
-    if(!is.matrix(x))
-      x <- as.matrix(x)
-  } else
-  if(length(x) == 0 && !is.null(x)) {
-    x <- vector(storage.mode(x))
-  } else x <- numeric(0)
-
-  # don't overwrite index tzone if tzone arg is missing
-  if(missing(tzone)) {
-    if(!is.null(index.tz <- attr(index,'tzone')))
-      tzone <- index.tz
-  }
-
   # work-around for Ops.xts
   dots.names <- eval(substitute(alist(...)))
   if(hasArg(.indexFORMAT))
@@ -178,7 +144,7 @@ function(x=NULL, index, tclass=c("POSIXct","POSIXt"),
   dots.names$.indexFORMAT <- dots.names$.indexTZ <- NULL
   # set any user attributes
   if(length(dots.names))
-    attributes(xx) <- c(attributes(xx), ...)
+    attributes(xx) <- c(attributes(xx), list(...))
   xx
 }
 
@@ -191,7 +157,7 @@ function(x, match.to, error=FALSE, ...) {
       } else return(x)
 
     if(!is.xts(x)) x <- .xts(coredata(x),.index(match.to), .indexCLASS=indexClass(match.to), tzone=indexTZ(match.to))
-    CLASS(x) <- CLASS(match.to)
+    attr(x, ".CLASS") <- CLASS(match.to)
     xtsAttributes(x) <- xtsAttributes(match.to)
   }
   oldCLASS <- CLASS(x)
@@ -223,8 +189,10 @@ function(x, match.to, error=FALSE, ...) {
 function(x) {
   cl <- attr(x,'.CLASS')
 
-  if(!is.null(cl))
-    return(structure(cl,class='CLASS'))
+  if(!is.null(cl)) {
+    attr(cl, 'class') <- 'CLASS'
+    return(cl)
+  }
 
   return(NULL)
 }

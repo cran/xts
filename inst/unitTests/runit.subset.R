@@ -64,7 +64,7 @@ test.i_missing_j_NA_no_colnames <- function() {
 
 # i = integer, j = NA, object has column names
 # See #97
-test.i_missing_j_NA_has_colnames <- function() {
+test.i_integer_j_NA_has_colnames <- function() {
   iina <- .xts(matrix(NA_integer_, 5, 2), 1:5)
   idna <- .xts(matrix(NA_integer_, 5, 2), 1.0 * 1:5)
   dina <- .xts(matrix(NA_real_, 5, 2), 1:5)
@@ -136,4 +136,85 @@ test.i_0 <- function() {
   xz0 <- as.xts(z[0,])
 
   checkEquals(x[0,], xz0, check.attributes = TRUE)
+}
+
+# Subset by non-numeric classes
+X <- xts(1:5, as.Date("2018-04-21") - 5:1)
+
+test.i_character <- function() {
+  x <- X
+
+  for (r in c(1L, 3L, 5L)) {
+    y <- x[r,]
+    i <- as.character(index(y))
+    checkIdentical(y, x[i, ])
+  }
+}
+
+test.i_asis_character <- function() {
+  x <- X
+
+  for (r in c(1L, 3L, 5L)) {
+    y <- x[r,]
+    i <- as.character(index(y))
+    checkIdentical(y, x[I(i), ])
+  }
+}
+
+test.i_Date <- function() {
+  x <- X
+
+  for (r in c(1L, 3L, 5L)) {
+    y <- x[r,]
+    i <- index(y)
+    checkIdentical(y, x[i, ])
+  }
+}
+
+test.i_POSIXct <- function() {
+  x <- X
+  index(x) <- as.POSIXct(index(x), tz = "UTC")
+
+  for (r in c(1L, 3L, 5L)) {
+    y <- x[r,]
+    i <- index(y)
+    checkIdentical(y, x[i, ])
+  }
+}
+
+test.i_POSIXlt <- function() {
+  x <- X
+  index(x) <- as.POSIXlt(index(x), tz = "UTC")
+
+  for (r in c(1L, 3L, 5L)) {
+    y <- x[r,]
+    i <- index(y)
+    checkIdentical(y, x[i, ])
+  }
+}
+
+# invalid date/time
+test.i_invalid_date_string <- function() {
+  x <- xts(1:10, as.Date("2015-02-20")+0:9)
+  y <- x["2012-02-30"]
+  checkIdentical(y, x[NA,])
+}
+test.i_only_range_separator_or_empty_string <- function() {
+  x <- xts(1:10, as.Date("2015-02-20")+0:9)
+  y <- x["/",]
+  checkIdentical(y, x)
+  y <- x["::",]
+  checkIdentical(y, x)
+  y <- x["",]
+  checkIdentical(y, x)
+}
+test.i_date_range_open_end <- function() {
+  x <- xts(1:10, as.Date("2015-02-20")+0:9)
+  y <- x["2015-02-23/",]
+  checkIdentical(y, x[4:10,])
+}
+test.i_date_range_open_start <- function() {
+  x <- xts(1:10, as.Date("2015-02-20")+0:9)
+  y <- x["/2015-02-26",]
+  checkIdentical(y, x[1:7,])
 }

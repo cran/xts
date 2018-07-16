@@ -1,3 +1,24 @@
+#
+#   xts: eXtensible time-series
+#
+#   Copyright (C) 2008  Jeffrey A. Ryan jeff.a.ryan @ gmail.com
+#
+#   Contributions from Joshua M. Ulrich
+#
+#   This program is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation, either version 2 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
 # This function corresponds to the ISO 8601 standard
 # for specifying dates and times as described in
 # the ISO 8601:2004e standard.
@@ -95,7 +116,7 @@
    # return as list
    c(as.list(c(
      year=as_numeric(YYYY),
-     mon=as_numeric(MM),
+     month=as_numeric(MM),
      day=as_numeric(DD),
      hour=as_numeric(H),
      min=as_numeric(M),
@@ -111,6 +132,10 @@
    e <- as.POSIXlt(do.call(lastof,  parse.side(intervals[2],intervals[1])))
    if(is.na(e))
      e <- as.POSIXlt(do.call(lastof,  parse.side(intervals[2])))
+ }
+ if(is.na(s) && is.na(e) && !nzchar(DURATION) && intervals != "") {
+   warning("cannot determine first and last time from ", x)
+   return(list(first.time=NA_real_,last.time=NA_real_))
  }
  if(!missing(start)) {
    start <- as.numeric(start)

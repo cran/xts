@@ -24,63 +24,11 @@
 #include <Rinternals.h>
 #include "xts.h"
 
-int firstNonNA (SEXP x)
+/* Internal use only
+ * called by: firstNonNA, naCheck, na_locf
+ */
+static int firstNonNACol (SEXP x, int col)
 {
-  /*
-    Internal use only; called by naCheck below.
-  */
-
-  int i=0, nr;
-  int *int_x=NULL;
-  double *real_x=NULL;
-
-  nr = nrows(x);
-
-  switch(TYPEOF(x)) {
-    case LGLSXP:
-      int_x = LOGICAL(x);
-      for(i=0; i<nr; i++) {
-        if(int_x[i]!=NA_LOGICAL) {
-          break;
-        }
-      }
-      break;
-    case INTSXP:
-      int_x = INTEGER(x);
-      for(i=0; i<nr; i++) {
-        if(int_x[i]!=NA_INTEGER) {
-          break;
-        }
-      }
-      break;
-    case REALSXP:
-      real_x = REAL(x);
-      for(i=0; i<nr; i++) {
-        if(!ISNA(real_x[i]) && !ISNAN(real_x[i])) {
-          break;
-        }
-      }
-      break;
-    case STRSXP:
-      for(i=0; i<nr; i++) {
-        if(STRING_ELT(x, i)!=NA_STRING) {
-          break;
-        }
-      }
-      break;
-    default:
-      error("unsupported type");
-      break;
-  }
-  return(i);
-}
-
-int firstNonNACol (SEXP x, int col)
-{
-  /*
-    Internal use only; called by naCheck below.
-  */
-
   int i=0, nr;
   int *int_x=NULL;
   double *real_x=NULL;
@@ -114,11 +62,25 @@ int firstNonNACol (SEXP x, int col)
         }
       }
       break;
+    case STRSXP:
+      for(i=0+col*nr; i<(nr+col*nr); i++) {
+        if(STRING_ELT(x, i)!=NA_STRING) {
+          break;
+        }
+      }
+      break;
     default:
       error("unsupported type");
       break;
   }
   return(i);
+}
+
+/* Should be internal use only (static), but is in xts.h
+ */
+int firstNonNA (SEXP x)
+{
+  return firstNonNACol(x, 0);
 }
 
 SEXP naCheck (SEXP x, SEXP check)
@@ -182,237 +144,6 @@ SEXP naCheck (SEXP x, SEXP check)
 
 SEXP na_locf (SEXP x, SEXP fromLast, SEXP _maxgap, SEXP _limit)
 {
-  /* only works on univariate data         *
-   * of type LGLSXP, INTSXP and REALSXP.   */
-  SEXP result;
-
-  int i, ii, nr, _first, P=0;
-  double gap, maxgap, limit;
-  _first = firstNonNA(x);
-
-  if(_first == nrows(x))
-    return(x);
-
-  int *int_x=NULL, *int_result=NULL;
-  double *real_x=NULL, *real_result=NULL;
-
-  if(ncols(x) > 1)
-    error("na.locf.xts only handles univariate, dimensioned data");
-
-  nr = nrows(x);
-  maxgap = asReal(_maxgap);
-  limit  = asReal(_limit);
-  gap = 0;
-
-  PROTECT(result = allocVector(TYPEOF(x), nrows(x))); P++;
-
-  switch(TYPEOF(x)) {
-    case LGLSXP:
-      int_x = LOGICAL(x);
-      int_result = LOGICAL(result);
-      if(!LOGICAL(fromLast)[0]) {
-        /* copy leading NAs */
-        for(i=0; i < (_first+1); i++) {
-          int_result[i] = int_x[i];
-        }
-        /* result[_first] now has first value fromLast=FALSE */
-        for(i=_first+1; i<nr; i++) {
-          int_result[i] = int_x[i];
-          if(int_result[i] == NA_LOGICAL && gap < maxgap) {
-            int_result[i] = int_result[i-1];
-            gap++;
-          }
-        }
-        if((int)gap > (int)maxgap) {  /* check that we don't have excessive trailing gap */
-          for(ii = i-1; ii > i-gap-1; ii--) {
-            int_result[ii] = NA_LOGICAL; 
-          }
-        }
-      } else {
-        /* nr-2 is first position to fill fromLast=TRUE */
-        int_result[nr-1] = int_x[nr-1];
-        for(i=nr-2; i>=0; i--) {
-          int_result[i] = int_x[i];
-          if(int_result[i] == NA_LOGICAL && gap < maxgap) {
-            int_result[i] = int_result[i+1];
-            gap++;
-          }
-        }
-      }
-      break;
-    case INTSXP:
-      int_x = INTEGER(x);
-      int_result = INTEGER(result);
-      if(!LOGICAL(fromLast)[0]) {
-        /* copy leading NAs */
-        for(i=0; i < (_first+1); i++) {
-          int_result[i] = int_x[i];
-        }
-        /* result[_first] now has first value fromLast=FALSE */
-        for(i=_first+1; i<nr; i++) {
-          int_result[i] = int_x[i];
-          if(int_result[i] == NA_INTEGER) {
-            if(limit > gap)
-              int_result[i] = int_result[i-1];
-            gap++;
-          } else {
-            if((int)gap > (int)maxgap) {
-              for(ii = i-1; ii > i-gap-1; ii--) {
-                int_result[ii] = NA_INTEGER; 
-              }
-            }
-            gap=0;
-          }
-        }
-        if((int)gap > (int)maxgap) {  /* check that we don't have excessive trailing gap */
-          for(ii = i-1; ii > i-gap-1; ii--) {
-            int_result[ii] = NA_INTEGER; 
-          }
-        }
-      } else {
-        /* nr-2 is first position to fill fromLast=TRUE */
-        int_result[nr-1] = int_x[nr-1];
-        for(i=nr-2; i>=0; i--) {
-          int_result[i] = int_x[i];
-          if(int_result[i] == NA_INTEGER) {
-            if(limit > gap)
-              int_result[i] = int_result[i+1];
-            gap++;
-          } else {
-            if((int)gap > (int)maxgap) {
-              for(ii = i+1; ii < i+gap+1; ii++) {
-                int_result[ii] = NA_INTEGER; 
-              }
-            }
-            gap=0;
-          }
-        }
-        if((int)gap > (int)maxgap) {  /* check that we don't have leading trailing gap */
-          for(ii = i+1; ii < i+gap+1; ii++) {
-            int_result[ii] = NA_INTEGER; 
-          }
-        }
-      }
-      break;
-    case REALSXP:
-      real_x = REAL(x);
-      real_result = REAL(result);
-      if(!LOGICAL(fromLast)[0]) {   /* fromLast=FALSE */
-        for(i=0; i < (_first+1); i++) {
-          real_result[i] = real_x[i];
-        }
-        for(i=_first+1; i<nr; i++) {
-          real_result[i] = real_x[i];
-          if( ISNA(real_result[i]) || ISNAN(real_result[i])) {
-            if(limit > gap)
-              real_result[i] = real_result[i-1];
-            gap++;
-          } else {
-            if((int)gap > (int)maxgap) {
-              for(ii = i-1; ii > i-gap-1; ii--) {
-                real_result[ii] = NA_REAL; 
-              }
-            }
-            gap=0;
-          }
-        }
-        if((int)gap > (int)maxgap) {  /* check that we don't have excessive trailing gap */
-          for(ii = i-1; ii > i-gap-1; ii--) {
-            real_result[ii] = NA_REAL; 
-          }
-        }
-      } else {                      /* fromLast=TRUE */
-        real_result[nr-1] = real_x[nr-1];
-        for(i=nr-2; i>=0; i--) {
-          real_result[i] = real_x[i];
-          if(ISNA(real_result[i]) || ISNAN(real_result[i])) {
-            if(limit > gap)
-              real_result[i] = real_result[i+1];
-            gap++;
-          } else {
-            if((int)gap > (int)maxgap) {
-              for(ii = i+1; ii < i+gap+1; ii++) {
-                real_result[ii] = NA_REAL; 
-              }
-            }
-            gap=0;
-          }
-        }
-        if((int)gap > (int)maxgap) {  /* check that we don't have leading trailing gap */
-          for(ii = i+1; ii < i+gap+1; ii++) {
-            real_result[ii] = NA_REAL; 
-          }
-        }
-      }
-      break;
-    case STRSXP:
-      if(!LOGICAL(fromLast)[0]) {   /* fromLast=FALSE */
-        for(i=0; i < (_first+1); i++) {
-          SET_STRING_ELT(result, i, STRING_ELT(x, i));
-        }
-        for(i=_first+1; i<nr; i++) {
-          SET_STRING_ELT(result, i, STRING_ELT(x, i));
-          if(STRING_ELT(x, i) == NA_STRING) {
-            if(limit > gap)
-              SET_STRING_ELT(result, i, STRING_ELT(result, i-1));
-            gap++;
-          } else {
-            if((int)gap > (int)maxgap) {
-              for(ii = i-1; ii > i-gap-1; ii--) {
-                SET_STRING_ELT(result, ii, NA_STRING);
-              }
-            }
-            gap=0;
-          }
-        }
-        if((int)gap > (int)maxgap) {  /* check that we don't have excessive trailing gap */
-          for(ii = i-1; ii > i-gap-1; ii--) {
-            SET_STRING_ELT(result, ii, NA_STRING);
-          }
-        }
-      } else {                      /* fromLast=TRUE */
-        SET_STRING_ELT(result, nr-1, STRING_ELT(x, nr-1));
-        for(i=nr-2; i>=0; i--) {
-          SET_STRING_ELT(result, i, STRING_ELT(x, i));
-          if(STRING_ELT(result, i) == NA_STRING) {
-            if(limit > gap)
-              SET_STRING_ELT(result, i, STRING_ELT(result, i+1));
-            gap++;
-          } else {
-            if((int)gap > (int)maxgap) {
-              for(ii = i+1; ii < i+gap+1; ii++) {
-                SET_STRING_ELT(result, ii, NA_STRING);
-              }
-            }
-            gap=0;
-          }
-        }
-        if((int)gap > (int)maxgap) {  /* check that we don't have leading trailing gap */
-          for(ii = i+1; ii < i+gap+1; ii++) {
-            SET_STRING_ELT(result, ii, NA_STRING);
-          }
-        }
-      }
-      break;
-    default:
-      error("unsupported type");
-      break;
-  }
-  if(isXts(x)) {
-    setAttrib(result, R_DimSymbol, getAttrib(x, R_DimSymbol));
-    setAttrib(result, R_DimNamesSymbol, getAttrib(x, R_DimNamesSymbol));
-    setAttrib(result, xts_IndexSymbol, getAttrib(x, xts_IndexSymbol));
-    copy_xtsCoreAttributes(x, result);
-    copy_xtsAttributes(x, result);
-  }
-  UNPROTECT(P);
-  return(result);
-}
-
-SEXP na_locf_col (SEXP x, SEXP fromLast, SEXP _maxgap, SEXP _limit)
-{
-  /* version of na_locf that works on multivariate data
-   * of type LGLSXP, INTSXP and REALSXP.   */
   SEXP result;
 
   int i, ii, j, nr, nc, _first=0, P=0;
@@ -427,9 +158,6 @@ SEXP na_locf_col (SEXP x, SEXP fromLast, SEXP _maxgap, SEXP _limit)
   limit  = asReal(_limit);
   gap = 0;
 
-  if(firstNonNA(x) == nr)
-    return(x);
-
   PROTECT(result = allocMatrix(TYPEOF(x), nr, nc)); P++;
 
   switch(TYPEOF(x)) {
@@ -440,11 +168,13 @@ SEXP na_locf_col (SEXP x, SEXP fromLast, SEXP _maxgap, SEXP _limit)
         for(j=0; j < nc; j++) {
           /* copy leading NAs */
           _first = firstNonNACol(x, j);
-          //if(_first+1 == nr) continue;
+          if (_first == nr + j*nr)
+            _first--;
           for(i=0+j*nr; i < (_first+1); i++) {
             int_result[i] = int_x[i];
           }
           /* result[_first] now has first value fromLast=FALSE */
+          gap = 0;
           for(i=_first+1; i<nr+j*nr; i++) {
             int_result[i] = int_x[i];
             if(int_result[i] == NA_LOGICAL && gap < maxgap) {
@@ -462,6 +192,7 @@ SEXP na_locf_col (SEXP x, SEXP fromLast, SEXP _maxgap, SEXP _limit)
         /* nr-2 is first position to fill fromLast=TRUE */
         for(j=0; j < nc; j++) {
           int_result[nr-1+j*nr] = int_x[nr-1+j*nr];
+          gap = 0;
           for(i=nr-2 + j*nr; i>=0+j*nr; i--) {
             int_result[i] = int_x[i];
             if(int_result[i] == NA_LOGICAL && gap < maxgap) {
@@ -479,11 +210,13 @@ SEXP na_locf_col (SEXP x, SEXP fromLast, SEXP _maxgap, SEXP _limit)
         for(j=0; j < nc; j++) {
           /* copy leading NAs */
           _first = firstNonNACol(x, j);
-          //if(_first+1 == nr) continue;
+          if (_first == nr + j*nr)
+            _first--;
           for(i=0+j*nr; i < (_first+1); i++) {
             int_result[i] = int_x[i];
           }
           /* result[_first] now has first value fromLast=FALSE */
+          gap = 0;
           for(i=_first+1; i<nr+j*nr; i++) {
             int_result[i] = int_x[i];
             if(int_result[i] == NA_INTEGER) {
@@ -509,6 +242,7 @@ SEXP na_locf_col (SEXP x, SEXP fromLast, SEXP _maxgap, SEXP _limit)
         /* nr-2 is first position to fill fromLast=TRUE */
         for(j=0; j < nc; j++) {
           int_result[nr-1+j*nr] = int_x[nr-1+j*nr];
+          gap = 0;
           for(i=nr-2 + j*nr; i>=0+j*nr; i--) {
             int_result[i] = int_x[i];
             if(int_result[i] == NA_INTEGER) {
@@ -539,11 +273,13 @@ SEXP na_locf_col (SEXP x, SEXP fromLast, SEXP _maxgap, SEXP _limit)
         for(j=0; j < nc; j++) {
           /* copy leading NAs */
           _first = firstNonNACol(x, j);
-          //if(_first+1 == nr) continue;
+          if (_first == nr + j*nr)
+            _first--;
           for(i=0+j*nr; i < (_first+1); i++) {
             real_result[i] = real_x[i];
           }
           /* result[_first] now has first value fromLast=FALSE */
+          gap = 0;
           for(i=_first+1; i<nr+j*nr; i++) {
             real_result[i] = real_x[i];
             if( ISNA(real_result[i]) || ISNAN(real_result[i])) {
@@ -568,6 +304,7 @@ SEXP na_locf_col (SEXP x, SEXP fromLast, SEXP _maxgap, SEXP _limit)
       } else {                      /* fromLast=TRUE */
         for(j=0; j < nc; j++) {
           real_result[nr-1+j*nr] = real_x[nr-1+j*nr];
+          gap = 0;
           for(i=nr-2 + j*nr; i>=0+j*nr; i--) {
             real_result[i] = real_x[i];
             if(ISNA(real_result[i]) || ISNAN(real_result[i])) {
@@ -586,6 +323,66 @@ SEXP na_locf_col (SEXP x, SEXP fromLast, SEXP _maxgap, SEXP _limit)
           if((int)gap > (int)maxgap) {  /* check that we don't have leading trailing gap */
             for(ii = i+1; ii < i+gap+1; ii++) {
               real_result[ii] = NA_REAL; 
+            }
+          }
+        }
+      }
+      break;
+    case STRSXP:
+      if(!LOGICAL(fromLast)[0]) {   /* fromLast=FALSE */
+        for(j=0; j < nc; j++) {
+          /* copy leading NAs */
+          _first = firstNonNACol(x, j);
+          if (_first == nr + j*nr)
+            _first--;
+          for(i=0+j*nr; i < (_first+1); i++) {
+            SET_STRING_ELT(result, i, STRING_ELT(x, i));
+          }
+          /* result[_first] now has first value fromLast=FALSE */
+          gap = 0;
+          for(i=_first+1; i<nr+j*nr; i++) {
+            SET_STRING_ELT(result, i, STRING_ELT(x, i));
+            if(STRING_ELT(x, i) == NA_STRING) {
+              if(limit > gap)
+                SET_STRING_ELT(result, i, STRING_ELT(result, i-1));
+              gap++;
+            } else {
+              if((int)gap > (int)maxgap) {
+                for(ii = i-1; ii > i-gap-1; ii--) {
+                  SET_STRING_ELT(result, ii, NA_STRING);
+                }
+              }
+              gap=0;
+            }
+          }
+          if((int)gap > (int)maxgap) {  /* check that we don't have excessive trailing gap */
+            for(ii = i-1; ii > i-gap-1; ii--) {
+              SET_STRING_ELT(result, ii, NA_STRING);
+            }
+          }
+        }
+      } else {                      /* fromLast=TRUE */
+        for(j=0; j < nc; j++) {
+          SET_STRING_ELT(result, nr-1+j*nr, STRING_ELT(x, nr-1+j*nr));
+          gap = 0;
+          for(i=nr-2 + j*nr; i>=0+j*nr; i--) {
+            SET_STRING_ELT(result, i, STRING_ELT(x, i));
+            if(STRING_ELT(result, i) == NA_STRING) {
+              if(limit > gap)
+                SET_STRING_ELT(result, i, STRING_ELT(result, i+1));
+              gap++;
+            } else {
+              if((int)gap > (int)maxgap) {
+                for(ii = i+1; ii < i+gap+1; ii++) {
+                  SET_STRING_ELT(result, ii, NA_STRING);
+                }
+              }
+              gap=0;
+            }
+          }
+          if((int)gap > (int)maxgap) {  /* check that we don't have leading trailing gap */
+            for(ii = i+1; ii < i+gap+1; ii++) {
+              SET_STRING_ELT(result, ii, NA_STRING);
             }
           }
         }
