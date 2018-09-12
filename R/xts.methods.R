@@ -260,7 +260,7 @@ window_idx <- function(x, index. = NULL, start = NULL, end = NULL)
     }
     # Fast search on index., faster than binsearch if index. is sorted (see findInterval)
     base_idx <- findInterval(index., idx)
-    base_idx <- pmax(base_idx, 1)
+    base_idx <- pmax(base_idx, 1L)
     # Only include indexes where we have an exact match in the xts series
     match <- idx[base_idx] == index.
     base_idx <- base_idx[match]
@@ -283,19 +283,7 @@ window_idx <- function(x, index. = NULL, start = NULL, end = NULL)
     # We get back upper bound of index as per findInterval
     tmp <- base_idx[firstlast]
 
-    # Iterate in reverse to grab all matches
-    # We have to do this to handle duplicate dates in the xts index.
-    tmp <- rev(tmp)
-    res <- NULL
-    for(i in tmp) {
-      dt <- idx[i]
-      j <- i
-      repeat {
-        res <- c(res, j)
-        j <- j -1
-        if(j < 1 || idx[j] != dt) break
-      }
-    }
+    res <- .Call("fill_window_dups_rev", tmp, .index(x), PACKAGE = "xts")
     firstlast <- rev(res)
   }
 

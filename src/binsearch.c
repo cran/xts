@@ -151,3 +151,61 @@ SEXP binsearch(SEXP key, SEXP vec, SEXP start)
 
   return ScalarInteger(lo);
 }
+
+SEXP fill_window_dups_rev(SEXP _x, SEXP _index)
+{
+  /* Translate user index (_x) to xts index (_index). '_x' contains the
+   * upper bound of the location of the user index in the xts index.
+   * This is necessary to handle duplicate dates in the xts index.
+   */
+  int n_x = length(_x);
+  int *x = INTEGER(_x);
+
+  if (length(_index) < 1) {
+    return allocVector(INTSXP, 0);
+  }
+
+  SEXP _out = PROTECT(allocVector(INTSXP, length(_index)));
+  int *out = INTEGER(_out);
+
+  int i, xi, j, k = 0;
+  switch (TYPEOF(_index)) {
+    case REALSXP:
+      {
+        double *index = REAL(_index);
+        /* Loop over locations in _x in reverse order */
+        for (i = n_x; i > 0; i--) {
+          xi = x[i-1];
+          j = xi;
+          do {
+            out[k++] = j--;
+          } while (j > 0 && index[xi-1] == index[j-1]);
+        }
+      }
+      break;
+    case INTSXP:
+      {
+        int *index = INTEGER(_index);
+        /* Loop over locations in _x in reverse order */
+        for (i = n_x; i > 0; i--) {
+          xi = x[i-1];
+          j = xi;
+          do {
+            out[k++] = j--;
+          } while (j > 0 && index[xi-1] == index[j-1]);
+        }
+      }
+      break;
+    default:
+      error("unsupported index type");
+  }
+
+  /* truncate so length(_out) = k
+   * NB: output is in reverse order!
+   */
+
+  SEXP _trunc = PROTECT(lengthgets(_out, k));
+  UNPROTECT(2);
+  
+  return _trunc;
+}

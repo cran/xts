@@ -89,6 +89,9 @@ function(x=NULL,
   if(any(!is.finite(index)))
     stop("'order.by' cannot contain 'NA', 'NaN', or 'Inf'")
 
+  # xts' tzone must only contain one element (POSIXlt tzone has 3)
+  tzone <- tzone[1L]
+
   x <- structure(.Data=x,
             index=structure(index,tzone=tzone,tclass=orderBy),
             class=c('xts','zoo'),
@@ -131,6 +134,8 @@ function(x=NULL, index, tclass=c("POSIXct","POSIXt"),
     if(!is.null(index.tz <- attr(index,'tzone')))
       tzone <- index.tz
   }
+  # xts' tzone must only contain one element (POSIXlt tzone has 3)
+  tzone <- tzone[1L]
 
   # work-around for Ops.xts
   dots.names <- eval(substitute(alist(...)))
@@ -138,6 +143,9 @@ function(x=NULL, index, tclass=c("POSIXct","POSIXt"),
     .indexFORMAT <- eval(dots.names$.indexFORMAT,parent.frame())
   else
     .indexFORMAT <- NULL
+
+  ## restore behaviour from v0.10-2
+  tclass <- .indexCLASS
   xx <- .Call("add_xtsCoreAttributes", x, index, .indexCLASS, tzone, tclass,
               c('xts','zoo'), .indexFORMAT, PACKAGE='xts')
   # remove .indexFORMAT and .indexTZ that come through Ops.xts
