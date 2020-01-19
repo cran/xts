@@ -19,6 +19,29 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+.subsetTimeOfDay <- function(x, fromTimeString, toTimeString) {
+  timestringToSeconds <- function(timeString) {
+    # "09:00:00" to seconds of day
+    origin <- paste("1970-01-01", timeString)
+    as.numeric(as.POSIXct(origin, "UTC")) %% 86400L
+  }
+
+  # handle timezone
+  tz <- indexTZ(x)
+  secOfDay <- as.POSIXlt(index(x), tz = tz)
+  secOfDay <- secOfDay$hour*60*60 + secOfDay$min*60 + secOfDay$sec
+
+  secBegin <- timestringToSeconds(fromTimeString)
+  secEnd   <- timestringToSeconds(toTimeString)
+
+  if (secBegin <= secEnd) {
+    i <- secOfDay >= secBegin & secOfDay <= secEnd
+  } else {
+    i <- secOfDay >= secBegin | secOfDay <= secEnd
+  }
+  which(i)
+}
+
 .subset_xts <- function(x, i, j, ...) {
   if(missing(i)) {
     i <- 1:NROW(x)
@@ -33,15 +56,17 @@
 function(x, i, j, drop = FALSE, which.i=FALSE,...) 
 {
     USE_EXTRACT <- FALSE # initialize to FALSE
-    if(is.null(dim(x))) {
+
+    dimx <- dim(x)
+    if(is.null(dimx)) {
       nr <- length(x)
       if(nr==0 && !which.i)
         return( xts(rep(NA,length(index(x))), index(x))[i] )
       nr <- length(.index(x))
       nc <- 1L
     } else {
-      nr <- nrow(x)
-      nc <- ncol(x)
+      nr <- dimx[1L]
+      nc <- dimx[2L]
     }
     
     if(!missing(i)) {
@@ -68,27 +93,27 @@ function(x, i, j, drop = FALSE, which.i=FALSE,...)
       i <- which(i) #(1:NROW(x))[rep(i,length.out=NROW(x))]
     } else
     if (is.character(i)) {
-      # is i of the format T/T?
       if(length(i) == 1 && !identical(integer(),grep("^T.*?/T",i[1]))) {
-      #if(grepl("^T.*?/T",i[1]) && length(i) == 1) {
-        i <- gsub("T|:","",i)
-        i <- strsplit(i, "/")[[1]]
-        i <- .makeISO8601TT(x, i[1],i[2])
-      }
-      # enables subsetting by date style strings
-      # must be able to process - and then allow for operations???
+        # is i of the format T/T?
+        ii <- gsub("T", "", i, fixed = TRUE)
+        ii <- strsplit(ii, "/", fixed = TRUE)[[1L]]
+        i <- .subsetTimeOfDay(x, ii[1L], ii[2L])
+      } else {
+        # enables subsetting by date style strings
+        # must be able to process - and then allow for operations???
 
-      i.tmp <- NULL
-      tz <- as.character(indexTZ(x)) # ideally this moves to attr(index,"tzone")
-      i_len <- length(i)
+        i.tmp <- NULL
+        tz <- as.character(tzone(x))
 
-      for(ii in i) {
-        adjusted.times <- .parseISO8601(ii, .index(x)[1], .index(x)[nr], tz=tz)
-        if(length(adjusted.times) > 1) {
-          i.tmp <- c(i.tmp, index_bsearch(.index(x), adjusted.times$first.time, adjusted.times$last.time))
+        for(ii in i) {
+          adjusted.times <- .parseISO8601(ii, .index(x)[1], .index(x)[nr], tz=tz)
+          if(length(adjusted.times) > 1) {
+            i.tmp <- c(i.tmp, index_bsearch(.index(x), adjusted.times$first.time, adjusted.times$last.time))
+          }
         }
+        i <- i.tmp
       }
-      i <- i.tmp
+      i_len <- length(i)
 
       if(i_len == 1L)  # IFF we are using ISO8601 subsetting
         USE_EXTRACT <- TRUE
@@ -164,8 +189,7 @@ function(x, i, j, drop = FALSE, which.i=FALSE,...)
     if(length(j) == 0 || (length(j)==1 && (is.na(j) || j==0))) {
       if(missing(i))
         i <- seq_len(nr)
-      return(.xts(coredata(x)[i,j,drop=FALSE], index=.index(x)[i],
-                  .indexCLASS=indexClass(x), .indexTZ=indexTZ(x)))
+      return(.xts(coredata(x)[i,j,drop=FALSE], index=.index(x)[i]))
     } 
     if(missing(i))
       return(.Call("extract_col", x, as.integer(j), drop, 1, nr, PACKAGE='xts'))
@@ -251,7 +275,8 @@ window_idx <- function(x, index. = NULL, start = NULL, end = NULL)
     usr_idx <- TRUE
     idx <- .index(x)
 
-    index. <- .toPOSIXct(index., indexTZ(x))
+    index. <- .toPOSIXct(index., tzone(x))
+    index. <- unclass(index.)
     index. <- index.[!is.na(index.)]
     if(is.unsorted(index.)) {
       # index. must be sorted for index_bsearch
@@ -265,15 +290,16 @@ window_idx <- function(x, index. = NULL, start = NULL, end = NULL)
     match <- idx[base_idx] == index.
     base_idx <- base_idx[match]
     index. <- index.[match]
+    index. <- .POSIXct(index., tz = tzone(x))
     if(length(base_idx) < 1) return(x[NULL,])
   }
 
   if(!is.null(start)) {
-    start <- .toPOSIXct(start, indexTZ(x))
+    start <- .toPOSIXct(start, tzone(x))
   }
 
   if(!is.null(end)) {
-    end <- .toPOSIXct(end, indexTZ(x))
+    end <- .toPOSIXct(end, tzone(x))
   }
 
   firstlast <- index_bsearch(index., start, end)

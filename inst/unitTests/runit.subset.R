@@ -283,3 +283,61 @@ test.duplicate_index_duplicate_i <- function() {
 
   checkIdentical(x[index(x),],  y)
 }
+
+# Time-of-day subset
+
+test.time_of_day_when_DST_starts <- function() {
+  # 2017-03-12: no 0200
+  tz <- "America/Chicago"
+  tmseq <- seq(as.POSIXct("2017-03-11", tz),
+               as.POSIXct("2017-03-14", tz), by = "1 hour")
+  x <- xts(seq_along(tmseq), tmseq)
+  i <- structure(c(1489215600, 1489219200, 1489222800, 1489302000,
+                   1489305600, 1489384800, 1489388400, 1489392000),
+       tzone = "America/Chicago", tclass = c("POSIXct", "POSIXt"))
+  checkIdentical(.index(x["T01:00:00/T03:00:00"]), i)
+}
+
+test.time_of_day_when_DST_ends <- function() {
+  # 2017-11-05: 0200 occurs twice
+  tz <- "America/Chicago"
+  tmseq <- seq(as.POSIXct("2017-11-04", tz),
+               as.POSIXct("2017-11-07", tz), by = "1 hour")
+  x <- xts(seq_along(tmseq), tmseq)
+  i <- structure(c(1509775200, 1509778800, 1509782400, 1509861600, 1509865200,
+       1509868800, 1509872400, 1509951600, 1509955200, 1509958800),
+       tzone = "America/Chicago", tclass = c("POSIXct", "POSIXt"))
+  checkIdentical(.index(x["T01:00:00/T03:00:00"]), i)
+}
+
+test.time_of_day_start_equals_end <- function() {
+  i <- 0:47
+  x <- .xts(i, i * 3600, tz = "UTC")
+  i1 <- .index(x[c(2L, 26L)])
+
+  checkIdentical(.index(x["T01:00/T01:00"]), i1)
+}
+
+test.time_of_day_end_before_start <- function() {
+  # Yes, this actually makes sense and is useful for financial markets
+  # E.g. some futures markets open at 18:00 and close at 16:00 the next day
+  i <- 0:47
+  x <- .xts(i, i * 3600, tz = "UTC")
+  i1 <- .index(x[-c(18L, 42L)])
+
+  checkIdentical(.index(x["T18:00/T16:00"]), i1)
+}
+
+# TODO: Add tests for possible edge cases and/or errors
+# end time before start time
+# start time and/or end time missing "T" prefix
+# start time and/or end time missing ":" separator
+
+test.time_of_day_on_zero_width <- function() {
+  # return relevant times and a column of NA; consistent with zoo
+  i <- 0:47
+  tz <- "America/Chicago"
+  x <- .xts(, i * 3600, tzone = tz)
+  y <- x["T18:00/T20:00"]
+  checkIdentical(y, .xts(rep(NA, 6), c(0:2, 24:26)*3600, tzone = tz))
+}

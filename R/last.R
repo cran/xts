@@ -37,21 +37,25 @@ function(x,n=1,keep=FALSE,...)
   }
   if(is.null(dim(x))) {
     if(n > 0) {
-      xx <- x[(NROW(x)-n+1):NROW(x)]
+      sub <- seq.int(to = length(x), length.out = min(n, length(x)))
+      xx <- x[sub]
       if(keep) xx <- structure(xx,keep=x[1:(NROW(x)+(-n))])
       xx
     } else {
-      xx <- x[1:(NROW(x)+n)]
+      sub <- seq_len(max(length(x) + n, 0L))
+      xx <- x[sub]
       if(keep) xx <- structure(xx,keep=x[((NROW(x)-(-n)+1):NROW(x))])
       xx
     }
   } else {
     if(n > 0) {
-      xx <- x[(NROW(x)-n+1):NROW(x),,drop=FALSE]
+      sub <- seq.int(to = NROW(x), length.out = min(n, NROW(x)))
+      xx <- x[sub,,drop=FALSE]
       if(keep) xx <- structure(xx,keep=x[1:(NROW(x)+(-n)),])
       xx
     } else {
-      xx <- x[1:(NROW(x)+n),,drop=FALSE]
+      sub <- seq_len(max(NROW(x) + n, 0L))
+      xx <- x[sub,,drop=FALSE]
       if(keep) xx <- structure(xx,keep=x[((NROW(x)-(-n)+1):NROW(x)),])
       xx
     }
@@ -98,12 +102,20 @@ function(x,n=1,keep=FALSE,...)
       }
       if(rpf > 0) {
         n <- ep[length(ep)-rpf]+1
-        xx <- x[n:NROW(x),,drop=FALSE]
+        if(is.null(dim(x))) {
+          xx <- x[n:NROW(x)]
+        } else {
+          xx <- x[n:NROW(x),,drop=FALSE]
+        }
         if(keep) xx <- structure(xx,keep=x[1:(ep[length(ep)+(-rpf)])])
         return(xx)
       } else {
         n <- ep[length(ep)+rpf]
-        xx <- x[1:n,,drop=FALSE]
+        if(is.null(dim(x))) {
+          xx <- x[1:n]
+        } else {
+          xx <- x[1:n,,drop=FALSE]
+        }
         if(keep) xx <- structure(xx,keep=x[(ep[length(ep)-(-rpf)]+1):NROW(x)])
         return(xx)
       }
@@ -112,13 +124,21 @@ function(x,n=1,keep=FALSE,...)
   if(length(n) != 1) stop("n must be of length 1")
   if(n > 0) {
     n <- min(n, NROW(x))
-    xx <- x[(NROW(x)-n+1):NROW(x),,drop=FALSE]
+    if(is.null(dim(x))) {
+      xx <- x[(NROW(x)-n+1):NROW(x)]
+    } else {
+      xx <- x[(NROW(x)-n+1):NROW(x),,drop=FALSE]
+    }
     if(keep) xx <- structure(xx,keep=x[1:(NROW(x)+(-n))])
     xx
   } else {
     if(abs(n) >= NROW(x))
       return(x[0])
-    xx <- x[1:(NROW(x)+n),,drop=FALSE]
+    if(is.null(dim(x))) {
+      xx <- x[1:(NROW(x)+n)]
+    } else {
+      xx <- x[1:(NROW(x)+n),,drop=FALSE]
+    }
     if(keep) xx <- structure(xx,keep=x[((NROW(x)-(-n)+1):NROW(x))])
     xx
   }

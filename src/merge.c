@@ -25,6 +25,24 @@
 #include <Rdefines.h>
 #include "xts.h"
 
+SEXP xts_make_names(SEXP colnames, SEXP env)
+{
+  SEXP s, t, unique;
+  PROTECT(s = t = allocList(3));
+  SET_TYPEOF(s, LANGSXP);
+  SETCAR(t, install("make.names"));
+  t = CDR(t);
+  SETCAR(t, colnames);
+  t = CDR(t);
+  PROTECT(unique = allocVector(LGLSXP, 1));
+  LOGICAL(unique)[0] = 1;
+  SETCAR(t, unique);
+  SET_TAG(t, install("unique"));
+  SEXP res = PROTECT(eval(s, env));
+  UNPROTECT(3);
+  return(res);
+}
+
 /* 
 
   This is a merge_join algorithm used to
@@ -47,6 +65,7 @@ SEXP do_merge_xts (SEXP x, SEXP y,
                    SEXP colnames, 
                    SEXP suffixes,
                    SEXP retside,
+                   SEXP check_names,
                    SEXP env,
                    int coerce)
 {
@@ -57,7 +76,7 @@ SEXP do_merge_xts (SEXP x, SEXP y,
   int ij_original, ij_result;
   int p = 0;
   SEXP xindex, yindex, index, result, attr, len_xindex;
-  SEXP s, t, unique;
+  SEXP s, t;
 
   int *int_result=NULL, *int_x=NULL, *int_y=NULL, int_fill=0;
   int *int_index=NULL, *int_xindex=NULL, *int_yindex=NULL;
@@ -964,14 +983,11 @@ SEXP do_merge_xts (SEXP x, SEXP y,
         }
       }
       SET_VECTOR_ELT(dimnames, 0, R_NilValue);  // ROWNAMES are NULL
-
-      PROTECT(s = t = allocList(3)); p++;
-      SET_TYPEOF(s, LANGSXP);
-      SETCAR(t, install("make.names")); t = CDR(t);
-      SETCAR(t, newcolnames); t = CDR(t);
-      PROTECT(unique = allocVector(LGLSXP, 1)); p++;  LOGICAL(unique)[0] = 1;
-      SETCAR(t, unique);  SET_TAG(t, install("unique"));
-      SET_VECTOR_ELT(dimnames, 1, eval(s, env));
+      if(LOGICAL(check_names)[0]) {
+        SET_VECTOR_ELT(dimnames, 1, xts_make_names(newcolnames, env));
+      } else {
+        SET_VECTOR_ELT(dimnames, 1, newcolnames);
+      }
  
       //SET_VECTOR_ELT(dimnames, 1, newcolnames); // COLNAMES are passed in
       setAttrib(result, R_DimNamesSymbol, dimnames);
@@ -984,9 +1000,6 @@ SEXP do_merge_xts (SEXP x, SEXP y,
   setAttrib(result, xts_IndexSymbol, index);
   if(LOGICAL(retclass)[0])
     setAttrib(result, R_ClassSymbol, getAttrib(x, R_ClassSymbol));
-  setAttrib(result, xts_IndexClassSymbol, getAttrib(x, xts_IndexClassSymbol));
-  setAttrib(result, xts_IndexTZSymbol, getAttrib(x, xts_IndexTZSymbol));
-  setAttrib(result, xts_IndexFormatSymbol, getAttrib(x, xts_IndexFormatSymbol));
   setAttrib(result, xts_ClassSymbol, getAttrib(x, xts_ClassSymbol));
   copy_xtsAttributes(x, result);
 
@@ -1001,7 +1014,7 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
   SEXP _x, _y, xtmp, result, _INDEX;
   /* colnames should be renamed as suffixes, as colnames need to be added at the C level */
   SEXP all, fill, retc, retclass, symnames,
-       suffixes, rets, retside, env, tzone;
+       suffixes, rets, retside, env, tzone, check_names;
   int nr, nc, ncs=0;
   int index_len;
   int i, n=0, P=0;
@@ -1016,6 +1029,7 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
   args = CDR(args); retside = CAR(args);
   args = CDR(args); env = CAR(args);
   args = CDR(args); tzone = CAR(args);
+  args = CDR(args); check_names = CAR(args);
   args = CDR(args);
   // args should now correspond to the ... objects we are looking to merge 
   argstart = args; // use this to rewind list...
@@ -1100,6 +1114,7 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
                                              R_NilValue,
                                              R_NilValue,
                                              rets,
+                                             check_names,
                                              env,
                                              coerce_to_double), &idx); P++;
 
@@ -1114,6 +1129,7 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
                                         R_NilValue,
                                         R_NilValue,
                                         rets,
+                                        check_names,
                                         env,
                                         coerce_to_double), idx);
       }
@@ -1151,6 +1167,7 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
                         /*colnames*/R_NilValue,
                                     R_NilValue,
                                     retside,
+                                    check_names,
                                     env,
                                     coerce_to_double), idxtmp);
 
@@ -1255,21 +1272,16 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
       SEXP dimnames;
       PROTECT(dimnames = allocVector(VECSXP, 2)); P++;
       SET_VECTOR_ELT(dimnames, 0, R_NilValue); // rownames are always NULL in xts
-
       /* colnames, assure they are unique before returning */
-      SEXP s, t, unique;
-      PROTECT(s = t = allocList(3)); P++;
-      SET_TYPEOF(s, LANGSXP);
-      SETCAR(t, install("make.names")); t = CDR(t);
-      SETCAR(t, NewColNames); t = CDR(t);
-      PROTECT(unique = allocVector(LGLSXP, 1)); P++;  LOGICAL(unique)[0] = 1;
-      SETCAR(t, unique);  SET_TAG(t, install("unique"));
-      SET_VECTOR_ELT(dimnames, 1, eval(s, env));
+      if(LOGICAL(check_names)[0]) {
+        SET_VECTOR_ELT(dimnames, 1, xts_make_names(NewColNames, env));
+      } else {
+        SET_VECTOR_ELT(dimnames, 1, NewColNames);
+      }
       setAttrib(result, R_DimNamesSymbol, dimnames);
     }
 
     SET_xtsIndex(result, GET_xtsIndex(_INDEX));
-    SET_xtsIndexTZ(result, GET_xtsIndexTZ(_INDEX));
     copy_xtsCoreAttributes(_INDEX, result);
     copy_xtsAttributes(_INDEX, result);
 
@@ -1283,6 +1295,7 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
                             symnames /*R_NilValue*/,
                             suffixes,
                              retside,
+                         check_names,
                                  env,
                     coerce_to_double)); P++;
   }
@@ -1297,7 +1310,6 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
   }
   copyMostAttrib(getAttrib(_x,xts_IndexSymbol), index_tmp);
   setAttrib(result, xts_IndexSymbol, index_tmp);
-  setAttrib(result, xts_IndexTZSymbol, getAttrib(index_tmp, xts_IndexTzoneSymbol));
 
   UNPROTECT(P);
   return(result);

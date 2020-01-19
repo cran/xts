@@ -64,10 +64,10 @@ first(last(matrix_xts,'1 week'),'3 days')
 
 
 ###################################################
-### code chunk number 10: indexClass
+### code chunk number 10: tclass
 ###################################################
-indexClass(matrix_xts)
-indexClass(convertIndex(matrix_xts,'POSIXct'))
+tclass(matrix_xts)
+tclass(convertIndex(matrix_xts,'POSIXct'))
 
 
 ###################################################

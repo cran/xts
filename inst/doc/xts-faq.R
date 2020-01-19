@@ -105,7 +105,7 @@ head(out2 <- merge(empty.xts, count, fill=0))
 ###################################################
 ### code chunk number 14: xts-faq.Rnw:224-225 (eval = FALSE)
 ###################################################
-## indexTZ(sample.xts) <- Sys.getenv("TZ")
+## tzone(sample.xts) <- Sys.getenv("TZ")
 
 
 ###################################################

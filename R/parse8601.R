@@ -133,7 +133,7 @@
    if(is.na(e))
      e <- as.POSIXlt(do.call(lastof,  parse.side(intervals[2])))
  }
- if(is.na(s) && is.na(e) && !nzchar(DURATION) && intervals != "") {
+ if(is.na(s) && is.na(e) && !nzchar(DURATION) && intervals[1L] != "") {
    warning("cannot determine first and last time from ", x)
    return(list(first.time=NA_real_,last.time=NA_real_))
  }
@@ -176,26 +176,4 @@
  }
 
  list(first.time=as.POSIXct(s),last.time=as.POSIXct(e))
-}
-
-.makeISO8601TT <- function(x, from, to) {
-  # parse T08:30/T15:00 queries across all
-  # available days into a vector of character
-  # strings compatible with the xts/ISO8601
-  # subsetting.  Thanks to Brian Peterson for
-  # the challenge ;-)
-  ep <- endpoints(x, on='days')
-  start_of <- (ep+1)[-length(ep)]
-  end_of   <- ep[-1]
-  if(as.numeric(from) < as.numeric(to)) {
-    paste(format(index(x[start_of]),paste("%Y%m%d",from,sep="T")),
-          format(index(x[end_of  ]),paste("%Y%m%d",to  ,sep="T")),sep="/")
-  } else {
-    c(
-    paste(format(index(x[start_of]),"%Y%m%d"),
-          format(index(x[end_of  ]),paste("%Y%m%d",to  ,sep="T")),sep="/"),
-    paste(format(index(x[start_of]),paste("%Y%m%d",from,sep="T")),
-          format(index(x[end_of  ]),"%Y%m%d"),sep="/")
-    )
-  }
 }

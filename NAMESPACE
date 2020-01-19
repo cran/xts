@@ -96,6 +96,8 @@ export(CLASS)
 export('CLASS<-')
 export(indexFormat)
 export('indexFormat<-')
+export(tformat)
+export('tformat<-')
 
 export(indexClass)
 export('indexClass<-')
@@ -175,6 +177,7 @@ export(lag.xts)
 export(diff.xts)
 export(merge.xts)
 #export(mergeXts)
+S3method(all.equal, xts)
 S3method(split, xts)
 S3method(lag,xts)
 S3method(diff,xts)
@@ -213,7 +216,6 @@ S3method(coredata,xts)
 S3method(xcoredata,default)
 S3method('xcoredata<-',default)
 S3method(as.xts,xts)
-S3method(as.zoo,xts)
 S3method('[',xts)
 S3method('[<-',xts)
 S3method(str,xts)
@@ -229,14 +231,14 @@ S3method(window,xts)
 S3method(dimnames, xts)
 S3method('dimnames<-', xts)
 
-S3method('indexClass<-',xts)
+S3method(tclass,xts)
 S3method('tclass<-',xts)
 
-S3method('indexFormat',xts)
-S3method('indexFormat<-',xts)
+S3method(tformat,xts)
+S3method('tformat<-',xts)
 
-S3method(indexTZ,xts)
-S3method('indexTZ<-',xts)
+S3method(tzone, default)
+S3method('tzone<-', default)
 S3method(tzone,xts)
 S3method('tzone<-',xts)
 
@@ -276,7 +278,10 @@ S3method(as.ts, xts)
 # zoo specific methods
 #importFrom(zoo,as.zoo)  # now in zoo
 S3method(as.xts,zoo)
-#S3method(as.zoo,xts) # now in zoo
+if (getRversion() >= "3.6.0" && utils::packageVersion("zoo") < "1.8.5") {
+  # xts:::as.zoo.xts was copied to zoo:::as.zoo.xts in zoo 1.8-5
+  S3method(zoo::as.zoo, xts)
+}
 
 # data.frame specific methods
 S3method(as.xts,data.frame)
