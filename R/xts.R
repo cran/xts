@@ -191,6 +191,13 @@ function(x=NULL, index, tclass=c("POSIXct","POSIXt"),
   xx <- .Call("add_xtsCoreAttributes", x, index, tzone, tclass,
               c('xts','zoo'), tformat, PACKAGE='xts')
 
+  # ensure there are no rownames
+  rn <- dimnames(xx)[[1]]
+  if(!is.null(rn)) {
+    attr(xx, '.ROWNAMES') <- rn
+    dimnames(xx)[1] <- list(NULL)
+  }
+
   # remove any index attributes that came through '...'
   # and set any user attributes (and/or dim, dimnames, etc)
   dots.names <- eval(substitute(alist(...)))
@@ -211,7 +218,12 @@ function(x, match.to, error=FALSE, ...) {
         stop('incompatible match.to attibutes')
       } else return(x)
 
-    if(!is.xts(x)) x <- .xts(coredata(x),.index(match.to),tzone=tzone(match.to))
+    if(!is.xts(x)) {
+      x <- .xts(coredata(x), .index(match.to),
+                tclass = tclass(match.to),
+                tzone = tzone(match.to),
+                tformat = tformat(match.to))
+    }
     attr(x, ".CLASS") <- CLASS(match.to)
     xtsAttributes(x) <- xtsAttributes(match.to)
   }
@@ -220,8 +232,10 @@ function(x, match.to, error=FALSE, ...) {
   if(length(oldCLASS) > 0 && !inherits(oldClass,'xts')) {  
     if(!is.null(dim(x))) {
       if(!is.null(attr(x,'.ROWNAMES'))) {
-        rownames(x) <- attr(x,'.ROWNAMES')[1:NROW(x)]
-      } #else rownames(x) <- NULL
+        # rownames<- (i.e. dimnames<-.xts) will not set row names
+        # force them directly
+        attr(x, "dimnames")[[1]] <- attr(x,'.ROWNAMES')[1:NROW(x)]
+      }
     }
     attr(x,'.ROWNAMES') <- NULL
     #if(is.null(attr(x,'.RECLASS')) || attr(x,'.RECLASS')) {#should it be reclassed?
