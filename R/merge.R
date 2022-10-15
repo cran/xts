@@ -69,13 +69,16 @@ merge.xts <- function(...,
   if(length(suffixes) != length(dots)) {
     warning("length of suffixes and does not match number of merged objects")
     syms <- as.character(dots)
+    # should we ignore suffixes here?
+    #suffixes <- NULL
   } else {
     syms <- as.character(suffixes)
-    sfx  <- as.character(suffixes)
   }
 
   .times <- .External('number_of_cols', ..., PACKAGE="xts")
-  symnames <- rep(syms, .times)  # moved call to make.names inside of mergeXts/do_merge_xts
+  # moved call to make.names inside of mergeXts/do_merge_xts
+  symnames <- rep(syms, .times)
+  suffixes <- rep(suffixes, .times)
 
   if(length(dots) == 1) {
     # this is for compat with zoo; one object AND a name

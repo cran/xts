@@ -223,7 +223,7 @@ test.i_date_range_open_start <- function() {
 test.empty_i_datetime <- function() {
   d0 <- as.Date(integer())
   zl <- xts(, d0)
-  empty <- .xts(logical(), d0, dim = 0:1, dimnames = list(NULL, NULL))
+  empty <- .xts(logical(), d0, "Date", "UTC", dim = 0:1, dimnames = list(NULL, NULL))
 
   i <- Sys.Date()
   checkIdentical(zl[i,], empty)
@@ -237,7 +237,7 @@ test.empty_i_datetime <- function() {
 test.empty_i_zero <- function() {
   d0 <- as.Date(integer())
   zl <- xts(, d0)
-  empty <- .xts(logical(), d0, dim = 0:1, dimnames = list(NULL, NULL))
+  empty <- .xts(logical(), d0, "Date", "UTC", dim = 0:1, dimnames = list(NULL, NULL))
 
   checkIdentical(zl[0,], empty)
   checkIdentical(zl[0],  empty)
@@ -246,7 +246,7 @@ test.empty_i_zero <- function() {
 test.empty_i_negative <- function() {
   d0 <- as.Date(integer())
   zl <- xts(, d0)
-  empty <- .xts(logical(), d0, dim = 0:1, dimnames = list(NULL, NULL))
+  empty <- .xts(logical(), d0, "Date", "UTC", dim = 0:1, dimnames = list(NULL, NULL))
 
   checkIdentical(zl[-1,], empty)
   checkIdentical(zl[-1],  empty)
@@ -255,7 +255,7 @@ test.empty_i_negative <- function() {
 test.empty_i_NA <- function() {
   d0 <- as.Date(integer())
   zl <- xts(, d0)
-  empty <- .xts(logical(), d0, dim = 0:1, dimnames = list(NULL, NULL))
+  empty <- .xts(logical(), d0, "Date", "UTC", dim = 0:1, dimnames = list(NULL, NULL))
 
   checkIdentical(zl[NA,], empty)
   checkIdentical(zl[NA],  empty)
@@ -264,7 +264,7 @@ test.empty_i_NA <- function() {
 test.empty_i_NULL <- function() {
   d0 <- as.Date(integer())
   zl <- xts(, d0)
-  empty <- .xts(logical(), d0, dim = 0:1, dimnames = list(NULL, NULL))
+  empty <- .xts(logical(), d0, "Date", "UTC", dim = 0:1, dimnames = list(NULL, NULL))
 
   checkIdentical(zl[NULL,], empty)
   checkIdentical(zl[NULL],  empty)
@@ -282,4 +282,70 @@ test.duplicate_index_duplicate_i <- function() {
   y <- xts(c(1, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4), dupdates)
 
   checkIdentical(x[index(x),],  y)
+}
+
+test.window_yearmon_yearqtr_tclass_dispatches_to_zoo <- function() {
+  i1 <- seq(as.yearmon(2007), by = 1/12, length.out = 36)
+  x1 <- xts(1:36, i1)
+  i2 <- seq(as.yearqtr(2007), by = 1/4, length.out = 36)
+  x2 <- xts(1:36, i2)
+
+  r1 <- x1["2015"]
+  r2 <- x2["2015"]
+
+  # zoo supports numeric start for yearmon and yearqtr
+  w1 <- window(x1, start = 2015.01)  # to window.zoo()
+  w2 <- window(x2, start = 2015.1)   # to window.zoo()
+  checkEquals(r1, w1, "window, yearmon, numeric start")
+  checkEquals(r2, w2, "window, yearqtr, numeric start")
+
+  w1 <- window(x1, start = "2015-01-01")  # to window.xts()
+  w2 <- window(x2, start = "2015Q1")      # to window.zoo()
+  checkEquals(r1, w1, "window, yearmon, character start")
+  checkEquals(r2, w2, "window, yearqtr, character start")
+}
+
+test.zero_width_subset_does_not_drop_class <- function(x) {
+  target <- c("custom", "xts", "zoo")
+  x <- .xts(1:10, 1:10, class = target)
+  y <- x[,0]
+  checkEquals(target, class(y))
+}
+
+test.zero_width_subset_does_not_drop_user_attributes <- function(x) {
+  x <- .xts(1:10, 1:10, my_attr = "hello")
+  y <- x[,0]
+  checkEquals("hello", attr(y, "my_attr"))
+}
+
+test.zero_length_subset_xts_returns_same_tclass <- function() {
+  x <- .xts(matrix(1)[0,], integer(0), "Date")
+  checkTrue(tclass(x[0,]) == "Date")
+  x <- .xts(matrix(1)[0,], integer(0), "POSIXct", "America/Chicago")
+  checkTrue(tclass(x[0,]) == "POSIXct")
+  checkTrue(tzone(x[0,]) == "America/Chicago")
+}
+
+test.zero_length_subset_returns_same_storage_mode <- function() {
+  # integer
+  x <- .xts(matrix(integer(0), 0), integer(0))
+  checkEquals(storage.mode(x), storage.mode(x[0, ]))
+  checkEquals(storage.mode(x), storage.mode(x[0, 0]))
+  checkEquals(storage.mode(x), storage.mode(x[0, FALSE]))
+
+  x <- .xts(matrix(integer(0), 0, 2), integer(0))
+  checkEquals(storage.mode(x), storage.mode(x[0,]))
+  checkEquals(storage.mode(x), storage.mode(x[0, 1]))
+  checkEquals(storage.mode(x), storage.mode(x[0, c(TRUE, FALSE)]))
+
+  # numeric
+  x <- .xts(matrix(numeric(0), 0), integer(0))
+  checkEquals(storage.mode(x), storage.mode(x[0, ]))
+  checkEquals(storage.mode(x), storage.mode(x[0, 0]))
+  checkEquals(storage.mode(x), storage.mode(x[0, FALSE]))
+
+  x <- .xts(matrix(numeric(0), 0, 2), integer(0))
+  checkEquals(storage.mode(x), storage.mode(x[0,]))
+  checkEquals(storage.mode(x), storage.mode(x[0, 1]))
+  checkEquals(storage.mode(x), storage.mode(x[0, c(TRUE, FALSE)]))
 }

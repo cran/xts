@@ -64,3 +64,16 @@ test.set_xtsAttributes_removes_tzone_indexTZ <- function() {
   checkIdentical(NULL, attr(y, "tzone"))
   checkIdentical(NULL, attr(y, ".indexTZ"))
 }
+
+test.set_tzone_default_always_character <- function() {
+  x <- "hello"
+  tzone(x) <- 1
+  checkIdentical(storage.mode(attr(x, "tzone")), "character")
+}
+
+test.tzone_matches_input_for_zero_width_subset <- function() {
+  target <- "Ima/Tzone"
+  x <- .xts(1:10, 1:10, tzone = target)
+  y <- x[,0]
+  checkEquals(target, tzone(y))
+}

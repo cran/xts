@@ -43,6 +43,30 @@ SEXP xts_make_names(SEXP colnames, SEXP env)
   return(res);
 }
 
+SEXP xts_colname_suffixes(SEXP colnames, SEXP suffixes, SEXP env)
+{
+  SEXP s, t;
+  PROTECT(s = t = allocList(4));
+  SET_TYPEOF(s, LANGSXP);
+
+  SETCAR(t, install("paste"));
+  t = CDR(t);
+
+  SETCAR(t, colnames);
+  t = CDR(t);
+
+  SETCAR(t, suffixes);
+  t = CDR(t);
+
+  SETCAR(t, mkString(""));
+  SET_TAG(t, install("sep"));
+
+  SEXP res = PROTECT(eval(s, env));
+
+  UNPROTECT(2);
+  return(res);
+}
+
 /* 
 
   This is a merge_join algorithm used to
@@ -349,8 +373,8 @@ SEXP do_merge_xts (SEXP x, SEXP y,
               REAL(result)[ ij_result ] = REAL(fill)[ 0 ];
               break;
             case CPLXSXP:
-              COMPLEX(result)[ ij_result ].r = REAL(fill)[ 0 ];
-              COMPLEX(result)[ ij_result ].i = REAL(fill)[ 0 ];
+              COMPLEX(result)[ ij_result ].r = COMPLEX(fill)[ 0 ].r;
+              COMPLEX(result)[ ij_result ].i = COMPLEX(fill)[ 0 ].i;
               break;
             case STRSXP:
               SET_STRING_ELT(result, ij_result, STRING_ELT(fill, 0));
@@ -437,8 +461,8 @@ SEXP do_merge_xts (SEXP x, SEXP y,
               REAL(result)[ ij_result ] = REAL(fill)[ 0 ];
               break;
             case CPLXSXP:
-              COMPLEX(result)[ ij_result ].r = REAL(fill)[ 0 ];
-              COMPLEX(result)[ ij_result ].i = REAL(fill)[ 0 ];
+              COMPLEX(result)[ ij_result ].r = COMPLEX(fill)[ 0 ].r;
+              COMPLEX(result)[ ij_result ].i = COMPLEX(fill)[ 0 ].i;
               break;
             case STRSXP:
               SET_STRING_ELT(result, ij_result, STRING_ELT(fill, 0));
@@ -552,8 +576,8 @@ SEXP do_merge_xts (SEXP x, SEXP y,
               REAL(result)[ ij_result ] = REAL(fill)[ 0 ];
               break;
             case CPLXSXP:
-              COMPLEX(result)[ ij_result ].r = REAL(fill)[ 0 ];
-              COMPLEX(result)[ ij_result ].i = REAL(fill)[ 0 ];
+              COMPLEX(result)[ ij_result ].r = COMPLEX(fill)[ 0 ].r;
+              COMPLEX(result)[ ij_result ].i = COMPLEX(fill)[ 0 ].i;
               break;
             case STRSXP:
               SET_STRING_ELT(result, ij_result, STRING_ELT(fill, 0));
@@ -585,8 +609,8 @@ SEXP do_merge_xts (SEXP x, SEXP y,
               REAL(result)[ ij_result ] = REAL(fill)[ 0 ];
               break;
             case CPLXSXP:
-              COMPLEX(result)[ ij_result ].r = REAL(fill)[ 0 ];
-              COMPLEX(result)[ ij_result ].i = REAL(fill)[ 0 ];
+              COMPLEX(result)[ ij_result ].r = COMPLEX(fill)[ 0 ].r;
+              COMPLEX(result)[ ij_result ].i = COMPLEX(fill)[ 0 ].i;
               break;
             case STRSXP:
               SET_STRING_ELT(result, ij_result, STRING_ELT(fill, 0));
@@ -647,8 +671,8 @@ SEXP do_merge_xts (SEXP x, SEXP y,
               REAL(result)[ ij_result ] = REAL(fill)[ 0 ];
               break;
             case CPLXSXP:
-              COMPLEX(result)[ ij_result ].r = REAL(fill)[ 0 ];
-              COMPLEX(result)[ ij_result ].i = REAL(fill)[ 0 ];
+              COMPLEX(result)[ ij_result ].r = COMPLEX(fill)[ 0 ].r;
+              COMPLEX(result)[ ij_result ].i = COMPLEX(fill)[ 0 ].i;
               break;
             case STRSXP:
               SET_STRING_ELT(result, ij_result, STRING_ELT(fill, 0));
@@ -737,8 +761,8 @@ SEXP do_merge_xts (SEXP x, SEXP y,
               REAL(result)[ ij_result ] = REAL(fill)[ 0 ]; //NA_REAL;
               break;
             case CPLXSXP:
-              COMPLEX(result)[ ij_result ].r = REAL(fill)[ 0 ]; //NA_REAL;
-              COMPLEX(result)[ ij_result ].i = REAL(fill)[ 0 ]; //NA_REAL;
+              COMPLEX(result)[ ij_result ].r = COMPLEX(fill)[ 0 ].r;
+              COMPLEX(result)[ ij_result ].i = COMPLEX(fill)[ 0 ].i;
               break;
             case STRSXP:
               SET_STRING_ELT(result, ij_result, STRING_ELT(fill, 0)); //NA_STRING);
@@ -868,8 +892,8 @@ SEXP do_merge_xts (SEXP x, SEXP y,
               REAL(result)[ ij_result ] = REAL(fill)[ 0 ];
               break;
             case CPLXSXP:
-              COMPLEX(result)[ ij_result ].r = REAL(fill)[ 0 ];
-              COMPLEX(result)[ ij_result ].i = REAL(fill)[ 0 ];
+              COMPLEX(result)[ ij_result ].r = COMPLEX(fill)[ 0 ].r;
+              COMPLEX(result)[ ij_result ].i = COMPLEX(fill)[ 0 ].i;
               break;
             case STRSXP:
               SET_STRING_ELT(result, ij_result, STRING_ELT(fill, 0));
@@ -895,6 +919,7 @@ SEXP do_merge_xts (SEXP x, SEXP y,
           switch( mode ) {
             case LGLSXP:
               LOGICAL(result)[ ij_result ] = LOGICAL(fill)[ 0 ]; //NA_INTEGER;
+              break;
             case INTSXP:
               int_result[ ij_result ] = int_fill;
               break;
@@ -902,8 +927,8 @@ SEXP do_merge_xts (SEXP x, SEXP y,
               REAL(result)[ ij_result ] = REAL(fill)[ 0 ]; //NA_REAL;
               break;
             case CPLXSXP:
-              COMPLEX(result)[ ij_result ].r = REAL(fill)[ 0 ]; //NA_REAL;
-              COMPLEX(result)[ ij_result ].i = REAL(fill)[ 0 ]; //NA_REAL;
+              COMPLEX(result)[ ij_result ].r = COMPLEX(fill)[ 0 ].r;
+              COMPLEX(result)[ ij_result ].i = COMPLEX(fill)[ 0 ].i;
               break;
             case STRSXP:
               SET_STRING_ELT(result, ij_result, STRING_ELT(fill, 0)); //NA_STRING);
@@ -992,6 +1017,12 @@ SEXP do_merge_xts (SEXP x, SEXP y,
           }
         }
       }
+
+      // add suffixes
+      if(R_NilValue != suffixes) {
+        newcolnames = PROTECT(xts_colname_suffixes(newcolnames, suffixes, env)); p++;
+      }
+
       SET_VECTOR_ELT(dimnames, 0, R_NilValue);  // ROWNAMES are NULL
       if(LOGICAL(check_names)[0]) {
         SET_VECTOR_ELT(dimnames, 1, xts_make_names(newcolnames, env));
@@ -1046,14 +1077,15 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
 
   n = 0;
   int type_of;
-  int coerce_to_double=0;
+  SEXP coerce = PROTECT(ScalarInteger(0)); P++;
+
   if(args != R_NilValue) type_of = TYPEOF(CAR(args));
   while(args != R_NilValue) {
     if(length(CAR(args)) > 0) {
       ncs += ncols(CAR(args));
       /* need to convert all objects if one non-zero-width needs to be converted */
       if(TYPEOF(CAR(args)) != type_of) {
-        coerce_to_double = 1;
+        INTEGER(coerce)[0] = 1;
       }
     }
     args = CDR(args);
@@ -1088,6 +1120,7 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
   /* test for NULLs that may be present from cbind dispatch */
   if(!leading_non_xts) { /* leading non-xts in 2 case scenario was igoring non-xts value */
     if(n < 3 && (args == R_NilValue || (isNull(CAR(args)) && length(args) == 1))) {/* no y arg or y==NULL */
+      UNPROTECT(P);
       return(_x);
     }
   }
@@ -1098,10 +1131,6 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
   } else {
     PROTECT(_y = duplicate(_x)); P++;
   }
-
-  /* rchk complains about possible protect-stack imbalance
-   * if this is PROTECT-ed before this point (not sure why) */
-  SEXP coerce = PROTECT(ScalarInteger(coerce_to_double)); P++;
 
   if(n > 2 || leading_non_xts) { /*args != R_NilValue) {*/
     /* generalized n-case optimization
@@ -1286,6 +1315,12 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
       SEXP dimnames;
       PROTECT(dimnames = allocVector(VECSXP, 2)); P++;
       SET_VECTOR_ELT(dimnames, 0, R_NilValue); // rownames are always NULL in xts
+
+      // Add suffixes
+      if(R_NilValue != suffixes) {
+        NewColNames = PROTECT(xts_colname_suffixes(NewColNames, suffixes, env)); P++;
+      }
+
       /* colnames, assure they are unique before returning */
       if(LOGICAL(check_names)[0]) {
         SET_VECTOR_ELT(dimnames, 1, xts_make_names(NewColNames, env));

@@ -131,3 +131,47 @@ test.check_names_false <- function() {
   z <- merge(x, y, check.names = FALSE)  # should have numeric column names
   checkIdentical(colnames(z), c("42", "21"))
 }
+
+test.merge_fills_complex_types <- function() {
+  data. <- cbind(c(1:5*1i, NA, NA), c(NA, NA, 3:7*1i))
+  colnames(data.) <- c("x", "y")
+  d21 <- data.
+  d21[is.na(d21)] <- 21i
+
+  x <- xts(1:5 * 1i, as.Date(1:5, origin = "1970-01-01"))
+  y <- xts(3:7 * 1i, as.Date(3:7, origin = "1970-01-01"))
+  z <- merge(x, y)
+  checkEqualsNumeric(coredata(z), data.)
+  z <- merge(x, y, fill = 21i)
+  checkEqualsNumeric(coredata(z), d21)
+
+  .index(x) <- as.integer(.index(x))
+  .index(y) <- as.integer(.index(y))
+  z <- merge(x, y)
+  checkEqualsNumeric(coredata(z), data.)
+  z <- merge(x, y, fill = 21i)
+  checkEqualsNumeric(coredata(z), d21)
+}
+
+test.suffixes_appended <- function() {
+  x <- xts(data.frame(x = 1), as.Date("2012-01-01"))
+  y <- xts(data.frame(x = 2), as.Date("2012-01-01"))
+
+  suffixes <- c("truex", "truey")
+  out <- merge(x, y, suffixes = suffixes)
+  checkEquals(paste0("x", suffixes), colnames(out))
+}
+
+test.suffix_append_order <- function() {
+  idx <- Sys.Date() - 1:10
+  x1 <- xts(cbind(alpha = 1:10, beta = 2:11), idx)
+  x2 <- xts(cbind(alpha = 3:12, beta = 4:13), idx)
+  x3 <- xts(cbind(alpha = 5:14, beta = 6:15), idx)
+
+  suffixes <- LETTERS[1:3]
+
+  mx <- merge(x1, x2, x3, suffixes = paste0('.', suffixes))
+  mz <- merge.zoo(x1, x2, x3, suffixes = suffixes)
+  
+  checkEquals(mx, as.xts(mz))
+}

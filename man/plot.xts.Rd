@@ -7,12 +7,12 @@
 \method{plot}{xts}(x, y = NULL, ..., subset = "",
   panels = NULL, multi.panel = FALSE, col = 1:8, up.col = NULL,
   dn.col = NULL, bg = "#FFFFFF", type = "l", lty = 1, lwd = 2, lend = 1,
-  main = deparse(substitute(x)), observation.based = FALSE,
+  main = deparse(substitute(x)), main.timespan = TRUE, observation.based = FALSE,
   ylim = NULL, yaxis.same = TRUE, yaxis.left = TRUE, yaxis.right = TRUE,
-  major.ticks = "auto", minor.ticks = NULL,
+  yaxis.ticks = 5, major.ticks = "auto", minor.ticks = NULL,
   grid.ticks.on = "auto", grid.ticks.lwd = 1, grid.ticks.lty = 1,
   grid.col = "darkgray", labels.col = "#333333", format.labels = TRUE,
-  grid2 = "#F5F5F5", legend.loc = NULL)
+  grid2 = "#F5F5F5", legend.loc = NULL, extend.xaxis = FALSE)
 \method{lines}{xts}(x, ..., main = "", on = 0, col = NULL, type = "l",
   lty = 1, lwd = 1, pch = 1)
 \method{points}{xts}(x, ..., main = "", on = 0, col = NULL, pch = 1)
@@ -52,6 +52,8 @@ separate panel.}
 
 \item{main}{main title}
 
+\item{main.timespan}{include the timespan of the series on the plot? (default \code{TRUE})}
+
 \item{observation.based}{TRUE/FALSE (default FALSE). If \code{TRUE}, the x-axis is drawn based on observations in the data. If \code{FALSE}, the x-axis is drawn based on the time index of the data.}
 
 \item{ylim}{the range of the y axis}
@@ -61,6 +63,9 @@ separate panel.}
 \item{yaxis.left}{if TRUE, draws the y axis on the left}
 
 \item{yaxis.right}{if TRUE, draws the y axis on the right}
+
+\item{yaxis.ticks}{desired number of y axis grid lines. The actual number
+  of grid lines is determined by the \code{n} argument to \code{\link{pretty}}.}
 
 \item{major.ticks}{period that specifies where tick marks and labels will be
   drawn on the x-axis. See Details for possible values.}
@@ -95,6 +100,11 @@ The default, \code{on=0}, will add to the active panel. The active panel is
 defined as the panel on which the most recent action was performed. Note that
 only the first element of \code{on} is checked for the default behavior to
 add to the last active panel.}
+
+\item{extend.xaxis}{TRUE/FALSE (default FALSE). If TRUE, extend the x-axis
+before and/or after the plot's existing time index range, so all of of the
+time index values of the new series are included in the plot.}
+
 }
 \details{
   Possible values for arguments \code{major.ticks}, \code{minor.ticks},

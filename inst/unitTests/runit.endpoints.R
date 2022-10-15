@@ -222,8 +222,84 @@ test.multiple_quarters <- function() {
   x <- xts(1:48, as.yearmon("2015-01-01") + 0:47 / 12)
   checkIdentical(endpoints(x, "quarters", 1), seq(0L, 48L, 3L))
   checkIdentical(endpoints(x, "quarters", 2), seq(0L, 48L, 6L))
-  checkIdentical(endpoints(x, "quarters", 3), seq(0L, 48L, 9L))
+  checkIdentical(endpoints(x, "quarters", 3), c(seq(0L, 48L, 9L), 48L))
   checkIdentical(endpoints(x, "quarters", 4), seq(0L, 48L,12L))
-  checkIdentical(endpoints(x, "quarters", 5), seq(0L, 48L,15L))
-  checkIdentical(endpoints(x, "quarters", 6), seq(0L, 48L,18L))
+  checkIdentical(endpoints(x, "quarters", 5), c(seq(0L, 48L,15L), 48L))
+  checkIdentical(endpoints(x, "quarters", 6), c(seq(0L, 48L,18L), 48L))
+}
+
+# end(x) always in endpoints(x) result
+test.last_obs_always_in_output <- function() {
+  N <- 341*12
+  xx <- xts(rnorm(N), seq(Sys.Date(), by = "day", length.out = N))
+
+  ep <- endpoints(xx, on = "quarters", k = 2) # OK
+  checkIdentical(end(xx), end(xx[ep,]), "quarters, k=2")
+
+  ep <- endpoints(xx, on = "quarters", k = 3) # NOPE
+  checkIdentical(end(xx), end(xx[ep,]), "quarters, k=3")
+
+  ep <- endpoints(xx, on = "quarters", k = 4) # NOPE
+  checkIdentical(end(xx), end(xx[ep,]), "quarters, k=4")
+
+  ep <- endpoints(xx, on = "quarters", k = 5) # NOPE
+  checkIdentical(end(xx), end(xx[ep,]), "quarters, k=5")
+
+  ep <- endpoints(xx, on = "months", k = 2) # NOPE
+  checkIdentical(end(xx), end(xx[ep,]), "months, k=2")
+
+  ep <- endpoints(xx, on = "months", k = 3) # OK
+  checkIdentical(end(xx), end(xx[ep,]), "months, k=3")
+
+  ep <- endpoints(xx, on = "months", k = 4) # NOPE
+  checkIdentical(end(xx), end(xx[ep,]), "months, k=4")
+
+  # For the "weeks" case works fine
+
+  ep <- endpoints(xx, on = "weeks", k = 2) # OK
+  checkIdentical(end(xx), end(xx[ep,]), "weeks, k=2")
+
+  ep <- endpoints(xx, on = "weeks", k = 3) # OK
+  checkIdentical(end(xx), end(xx[ep,]), "weeks, k=3")
+
+  ep <- endpoints(xx, on = "weeks", k = 4) # OK
+  checkIdentical(end(xx), end(xx[ep,]), "weeks, k=4")
+}
+
+test.k_less_than_1_errors <- function() {
+  x <- xDailyIntIdx
+
+  checkException(endpoints(x, on = "years", k =  0))
+  checkException(endpoints(x, on = "years", k = -1))
+
+  checkException(endpoints(x, on = "quarters", k =  0))
+  checkException(endpoints(x, on = "quarters", k = -1))
+
+  checkException(endpoints(x, on = "months", k =  0))
+  checkException(endpoints(x, on = "months", k = -1))
+
+  checkException(endpoints(x, on = "weeks", k =  0))
+  checkException(endpoints(x, on = "weeks", k = -1))
+
+  checkException(endpoints(x, on = "days", k =  0))
+  checkException(endpoints(x, on = "days", k = -1))
+
+  x <- xSecIntIdx
+
+  checkException(endpoints(x, on = "hours", k =  0))
+  checkException(endpoints(x, on = "hours", k = -1))
+
+  checkException(endpoints(x, on = "minutes", k =  0))
+  checkException(endpoints(x, on = "minutes", k = -1))
+
+  checkException(endpoints(x, on = "seconds", k =  0))
+  checkException(endpoints(x, on = "seconds", k = -1))
+
+  x <- .xts(1:10, sort(1 + runif(10)))
+
+  checkException(endpoints(x, on = "ms", k =  0))
+  checkException(endpoints(x, on = "ms", k = -1))
+
+  checkException(endpoints(x, on = "us", k =  0))
+  checkException(endpoints(x, on = "us", k = -1))
 }

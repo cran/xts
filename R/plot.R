@@ -44,7 +44,9 @@ chart.lines <- function(x,
            }
            if (length(colors) < nrow(x[,1]))
                colors <- colors[1]
-           lines(xx$Env$xycoords$x,x[,1],lwd=2,col=colors,lend=lend,lty=1,type="h",...)
+           # x-coordinates for this column
+           xcoords <- xx$get_xcoords(x[,1])
+           lines(xcoords,x[,1],lwd=2,col=colors,lend=lend,lty=1,type="h",...)
          },
          p=, l=, b=, c=, o=, s=, S=, n={
            if(is.null(col))
@@ -54,13 +56,10 @@ chart.lines <- function(x,
            if(length(lwd) < NCOL(x)) lwd <- rep(lwd, length.out = NCOL(x))
            if(length(col) < NCOL(x)) col <- rep(col, length.out = NCOL(x))
 
-           # ensure series only has index values in xdata subset
-           xdataSubset <- xx$Env$xdata[xx$Env$xsubset]
-           y <- merge(x, .xts(,.index(xdataSubset)), join = "right")
-           xcoords <- xx$Env$xycoords$x
-
-           for(i in NCOL(y):1) {
-             lines(xcoords, y[,i], type=type, lend=lend, col=col[i],
+           for(i in NCOL(x):1) {
+             # x-coordinates for this column
+             xcoords <- xx$get_xcoords(x[,i])
+             lines(xcoords, x[,i], type=type, lend=lend, col=col[i],
                    lty=lty[i], lwd=lwd[i], ...)
            }
          },
@@ -131,11 +130,13 @@ plot.xts <- function(x,
                      lwd=2,
                      lend=1,
                      main=deparse(substitute(x)),
+                     main.timespan=TRUE,
                      observation.based=FALSE,
                      ylim=NULL,
                      yaxis.same=TRUE,
                      yaxis.left=TRUE,
                      yaxis.right=TRUE,
+                     yaxis.ticks=5,
                      major.ticks="auto",
                      minor.ticks=NULL,
                      grid.ticks.on="auto",
@@ -145,7 +146,8 @@ plot.xts <- function(x,
                      labels.col="#333333",
                      format.labels=TRUE,
                      grid2="#F5F5F5",
-                     legend.loc=NULL){
+                     legend.loc=NULL,
+                     extend.xaxis=FALSE){
   
   # Small multiples with multiple pages behavior occurs when multi.panel is
   # an integer. (i.e. multi.panel=2 means to iterate over the data in a step
@@ -197,6 +199,7 @@ plot.xts <- function(x,
                     yaxis.same=yaxis.same,
                     yaxis.left=yaxis.left,
                     yaxis.right=yaxis.right,
+                    yaxis.ticks=yaxis.ticks,
                     major.ticks=major.ticks,
                     minor.ticks=minor.ticks,
                     grid.ticks.on=grid.ticks.on,
@@ -206,7 +209,8 @@ plot.xts <- function(x,
                     labels.col=labels.col,
                     format.labels=format.labels,
                     grid2=grid2,
-                    legend.loc=legend.loc)
+                    legend.loc=legend.loc,
+                    extend.xaxis=extend.xaxis)
       if(i < length(chunks))
         print(p)
     }
@@ -256,6 +260,7 @@ plot.xts <- function(x,
   cs$Env$theme$las <- if (hasArg("las")) eval.parent(plot.call$las) else 0
   cs$Env$theme$cex.axis <- if (hasArg("cex.axis")) eval.parent(plot.call$cex.axis) else 0.9
   cs$Env$format.labels <- format.labels
+  cs$Env$yaxis.ticks <- yaxis.ticks
   cs$Env$major.ticks <- if (isTRUE(major.ticks)) "auto" else major.ticks
   cs$Env$minor.ticks <- if (isTRUE(minor.ticks)) "auto" else minor.ticks
   cs$Env$grid.ticks.on <- if (isTRUE(grid.ticks.on)) "auto" else grid.ticks.on
@@ -272,6 +277,7 @@ plot.xts <- function(x,
   
   cs$Env$lend <- lend
   cs$Env$legend.loc <- legend.loc
+  cs$Env$extend.xaxis <- extend.xaxis
   cs$Env$call_list <- list()
   cs$Env$call_list[[1]] <- plot.call
   cs$Env$observation.based <- observation.based
@@ -288,50 +294,30 @@ plot.xts <- function(x,
   cs$Env$main <- main
   cs$Env$ylab <- if (hasArg("ylab")) eval.parent(plot.call$ylab) else ""
   
-  # Set xlim using the raw returns data passed into function
-  # xlim can be based on observations or time
-  if(cs$Env$observation.based){
-    # observation based x-axis
-    cs$Env$xycoords <- xy.coords(1:NROW(cs$Env$xdata[subset]))
-    cs$set_xlim(c(1,NROW(cs$Env$xdata[subset])))
-    cs$Env$xstep <- 1
-  } else {
-    # time based x-axis
-    xycoords <- xy.coords(.index(cs$Env$xdata[cs$Env$xsubset]), 
-                          cs$Env$xdata[cs$Env$xsubset][,1])
-    cs$Env$xycoords <- xycoords
-    cs$Env$xlim <- range(xycoords$x, na.rm=TRUE)
-    cs$Env$xstep <- diff(xycoords$x[1:2])
-    # I don't think I need this because I already set cs$Env$xlim
-    cs$set_xlim(cs$Env$xlim)
-  }
-  
-  # chart_Series uses fixed=FALSE and add_* uses fixed=TRUE, not sure why or
-  # which is best.
   if(is.null(ylim)){
     if(isTRUE(multi.panel)){
       if(yaxis.same){
         # set the ylim for the first panel based on all the data
-        yrange <- range(cs$Env$xdata[subset], na.rm=TRUE)
+        yrange <- cs$create_ylim(cs$Env$xdata[subset,])
+        # and recalculate ylim when drawing (fixed=FALSE)
+        cs$set_ylim(list(structure(yrange, fixed=FALSE)))
       } else {
         # set the ylim for the first panel based on the first column
-        yrange <- range(cs$Env$xdata[,1][subset], na.rm=TRUE)
+        yrange <- cs$create_ylim(cs$Env$xdata[subset, 1])
+        # but do NOT recalculate ylim when drawing (fixed=TRUE)
+        cs$set_ylim(list(structure(yrange, fixed=TRUE)))
       }
     } else {
       # set the ylim based on all the data if this is not a multi.panel plot
-      yrange <- range(cs$Env$xdata[subset], na.rm=TRUE)
+      yrange <- cs$create_ylim(cs$Env$xdata[subset,])
+      # and recalculate ylim when drawing (fixed=FALSE)
+      cs$set_ylim(list(structure(yrange, fixed=FALSE)))
     }
-    if(yrange[1L] == yrange[2L]) {
-      if(yrange[1L] == 0) {
-        yrange <- yrange + c(-1, 1)
-      } else {
-        yrange <- c(0.8, 1.2) * yrange[1L]
-      }
-    }
-    cs$set_ylim(list(structure(yrange, fixed=TRUE)))
+
     cs$Env$constant_ylim <- range(cs$Env$xdata[subset], na.rm=TRUE)
   } else {
     # use the ylim arg passed in
+    # but do NOT recalculate ylim when drawing (fixed=TRUE)
     cs$set_ylim(list(structure(ylim, fixed=TRUE)))
     cs$Env$constant_ylim <- ylim
   }
@@ -340,10 +326,12 @@ plot.xts <- function(x,
   
   # compute the x-axis ticks for the grid
   if(!isNullOrFalse(grid.ticks.on)) {
-    cs$add(expression(atbt <- axTicksByTime(xdata[xsubset], ticks.on=grid.ticks.on),
-                      segments(xycoords$x[atbt],
+    cs$add(expression(xcoords <- get_xcoords(),
+                      x_index <- get_xcoords(at_posix = TRUE),
+                      atbt <- axTicksByTime(.xts(,x_index)[xsubset], ticks.on=grid.ticks.on),
+                      segments(xcoords[atbt],
                                get_ylim()[[2]][1],
-                               xycoords$x[atbt],
+                               xcoords[atbt],
                                get_ylim()[[2]][2],
                                col=theme$grid, lwd=grid.ticks.lwd, lty=grid.ticks.lty)),
            clip=FALSE, expr=TRUE)
@@ -355,13 +343,15 @@ plot.xts <- function(x,
   
   # add observation level ticks on x-axis if < 400 obs.
   cs$add(expression(if(NROW(xdata[xsubset])<400) 
-  {axis(1,at=xycoords$x,labels=FALSE,col=theme$grid2,col.axis=theme$grid2,tcl=0.3)}),expr=TRUE)
+  {axis(1,at=get_xcoords(),labels=FALSE,col=theme$grid2,col.axis=theme$grid2,tcl=0.3)}),expr=TRUE)
   
   # major x-axis ticks and labels
   if(!isNullOrFalse(major.ticks)) {
-    cs$add(expression(axt <- axTicksByTime(xdata[xsubset], ticks.on=major.ticks, format.labels=format.labels),
+    cs$add(expression(xcoords <- get_xcoords(),
+                      x_index <- get_xcoords(at_posix = TRUE),
+                      axt <- axTicksByTime(.xts(,x_index)[xsubset], ticks.on=major.ticks, format.labels=format.labels),
                       axis(1,
-                           at=xycoords$x[axt],
+                           at=xcoords[axt],
                            labels=names(axt),
                            las=theme$las, lwd.ticks=1.5, mgp=c(3,1.5,0),
                            tcl=-0.4, cex.axis=theme$cex.axis,
@@ -371,9 +361,11 @@ plot.xts <- function(x,
   
   # minor x-axis ticks
   if(!isNullOrFalse(minor.ticks)) {
-    cs$add(expression(axt <- axTicksByTime(xdata[xsubset], ticks.on=minor.ticks, format.labels=format.labels),
+    cs$add(expression(xcoords <- get_xcoords(),
+                      x_index <- get_xcoords(at_posix = TRUE),
+                      axt <- axTicksByTime(.xts(,x_index)[xsubset], ticks.on=minor.ticks, format.labels=format.labels),
                  axis(1,
-                      at=xycoords$x[axt],
+                      at=xcoords[axt],
                       labels=FALSE,
                       las=theme$las, lwd.ticks=0.75, mgp=c(3,1.5,0),
                       tcl=-0.4, cex.axis=theme$cex.axis,
@@ -382,10 +374,12 @@ plot.xts <- function(x,
   }
   
   # add main title and date range of data
-  text.exp <- c(expression(text(xlim[1],0.5,main,font=2,col=theme$labels,offset=0,cex=1.1,pos=4)),
-                expression(text(xlim[2],0.5,
-                                paste(start(xdata[xsubset]),end(xdata[xsubset]),sep=" / "),
-                                col=theme$labels,adj=c(0,0),pos=2)))
+  text.exp <- expression(text(xlim[1],0.5,main,font=2,col=theme$labels,offset=0,cex=1.1,pos=4))
+  if(isTRUE(main.timespan)) {
+    text.exp <- c(text.exp, expression(text(xlim[2],0.5,.makeISO8601(xdata[xsubset]),
+                                            col=theme$labels,adj=c(0,0),pos=2)))
+  }
+
   cs$add(text.exp, env=cs$Env, expr=TRUE)
   
   cs$set_frame(2)
@@ -430,7 +424,7 @@ plot.xts <- function(x,
     if(yaxis.same){
       lenv$ylim <- cs$Env$constant_ylim
     } else {
-      lenv$ylim <- range(cs$Env$xdata[subset,1], na.rm=TRUE)
+      lenv$ylim <- cs$create_ylim(cs$Env$xdata[subset, 1])
     }
     
     exp <- quote(chart.lines(xdata,
@@ -446,7 +440,7 @@ plot.xts <- function(x,
 
     # Add expression for the main plot
     cs$add(exp, env=lenv, expr=TRUE)
-    text.exp <- expression(text(x=xycoords$x[2],
+    text.exp <- expression(text(x=get_xcoords()[2],
                                 y=ylim[2]*0.9,
                                 labels=label,
                                 col=theme$labels,
@@ -462,9 +456,7 @@ plot.xts <- function(x,
         if(yaxis.same){
           lenv$ylim <- cs$Env$constant_ylim
         } else {
-          yrange <- range(cs$Env$xdata[subset,i], na.rm=TRUE)
-          if(all(yrange == 0)) yrange <- yrange + c(-1,1)
-          lenv$ylim <- yrange
+          lenv$ylim <- cs$create_ylim(cs$Env$xdata[subset, i])
         }
         lenv$type <- cs$Env$type
         
@@ -523,7 +515,7 @@ plot.xts <- function(x,
                                    pos=4, cex=theme$cex.axis, xpd=TRUE)))
         }
         cs$add(exp,env=lenv,expr=TRUE,no.update=TRUE)
-        text.exp <- expression(text(x=xycoords$x[2],
+        text.exp <- expression(text(x=get_xcoords()[2],
                                     y=ylim[2]*0.9,
                                     labels=label,
                                     col=theme$labels,
@@ -611,13 +603,26 @@ addSeries <- function(x, main="", on=NA, type="l", col=NULL, lty=1, lwd=1, pch=1
       x$Env$x_grid_lines(xDataSubset, x$Env$grid.ticks.on, par("usr")[3:4])
     }
     # we can add points that are not necessarily at the points
-    # on the main series
+    # on the main series, but need to ensure the new series only
+    # has index values within the xdata subset
     if(xsubset == "") {
       subset.range <- xsubset
     } else {
-      subset.range <- paste(start(xDataSubset), end(xDataSubset),sep="/")
+      fmt <- "%Y-%m-%d %H:%M:%OS6"
+      subset.range <- paste(format(start(xDataSubset), fmt),
+                            format(end(xDataSubset), fmt), sep = "/")
     }
-    ta.y <- merge(ta, .xts(,.index(xDataSubset), tzone=tzone(xdata)))[subset.range]
+
+    xds <- .xts(, .index(xDataSubset), tzone=tzone(xdata))
+    ta.y <- merge(ta, xds)[subset.range]
+    if (!isTRUE(x$Env$extend.xaxis)) {
+        xi <- .index(ta.y)
+        xc <- .index(xds)
+
+        xsubset <- which(xi >= xc[1] & xi <= xc[length(xc)])
+        ta.y <- ta.y[xsubset]
+    }
+
     chart.lines(ta.y, type=type, col=col, lty=lty, lwd=lwd, pch=pch, ...)
   }
 
@@ -742,20 +747,21 @@ addEventLines <- function(events, main="", on=0, lty=1, lwd=1, col=1, ...){
     }
     ypos <- x$Env$ylim[[2*on]][2]*0.995
     # we can add points that are not necessarily at the points on the main series
-    subset.range <- paste(start(xdata[xsubset]),
-                          end(xdata[xsubset]),sep="/")
+    subset.range <-
+      paste(format(start(xdata[xsubset]), "%Y%m%d %H:%M:%OS6"),
+            format(end(xdata[xsubset]), "%Y%m%d %H:%M:%OS6"),
+            sep = "/")
     ta.adj <- merge(n=.xts(1:NROW(xdata[xsubset]),
                            .index(xdata[xsubset]), 
                            tzone=tzone(xdata)),
                     .xts(rep(1, NROW(events)),# use numeric for the merge
                          .index(events)))[subset.range]
     # should we not merge and only add events that are in index(xdata)?
-    ta.x <- as.numeric(na.approx(ta.adj[,1], rule=2) )
     ta.y <- ta.adj[,-1]
     # the merge should result in NAs for any object that is not in events
     event.ind <- which(!is.na(ta.y))
-    abline(v=x$Env$xycoords$x[event.ind], col=col, lty=lty, lwd=lwd)
-    text(x=x$Env$xycoords$x[event.ind], y=ypos, 
+    abline(v=x$get_xcoords()[event.ind], col=col, lty=lty, lwd=lwd)
+    text(x=x$get_xcoords()[event.ind], y=ypos,
          labels=as.character(events[,1]), 
          col=x$Env$theme$labels, ...)
   }
@@ -823,7 +829,6 @@ addEventLines <- function(events, main="", on=0, lty=1, lwd=1, col=1, ...){
     plot_object$add(exp,env=lenv,expr=TRUE,no.update=TRUE)
   } else {
     for(i in 1:length(on)) {
-      ind <- on[i]
       no.update <- FALSE
 
       plot_object$set_frame(2*on[i]) # this is defaulting to using headers, should it be optionable?
@@ -904,7 +909,6 @@ addLegend <- function(legend.loc="topright", legend.names=NULL, col=NULL, ncol=1
     plot_object$add(exp,env=lenv,expr=TRUE,no.update=TRUE)
   } else {
     for(i in 1:length(on)) {
-      ind <- on[i]
       no.update <- FALSE
 
       plot_object$set_frame(2*on[i]) # this is defaulting to using headers, should it be optionable?
@@ -958,7 +962,6 @@ addPolygon <- function(x, y=NULL, main="", on=NA, col=NULL, ...){
     ta.adj <- merge(n=.xts(1:NROW(xdata[xsubset]),
                            .index(xdata[xsubset]), 
                            tzone=tzone(xdata)),ta)[subset.range]
-    ta.x <- as.numeric(na.approx(ta.adj[,1], rule=2) )
     # NAs in the coordinates break the polygon which is not the behavior we want
     ta.y <- na.omit(ta.adj[,-1])
     
@@ -1091,10 +1094,28 @@ new.replot_xts <- function(frame=1,asp=1,xlim=c(1,10),ylim=list(structure(c(1,10
   # getters
   get_frame <- function(frame) { Env$frame }
   get_asp   <- function(asp) { Env$asp }
-  get_xlim  <- function(xlim) { Env$xlim }
-  get_ylim  <- function(ylim) { Env$ylim }
-  get_pad   <- function() c(Env$pad1,Env$pad3)
+  get_xlim  <- function(xlim) { update_frames(); Env$xlim }
+  get_ylim  <- function(ylim) { update_frames(); Env$ylim }
   
+  create_ylim <-
+  function(x, const_y_mult = 0.2)
+  {
+    # Create y-axis limits from 'x'. Jitter the max/min limits by
+    # 'const_y_mult' if the max/min values are the same.
+    lim <- range(x, na.rm = TRUE)
+
+    if(isTRUE(all.equal(lim[1L], lim[2L]))) {
+      # if max and min are the same
+      if(lim[1L] == 0) {
+        lim <- c(-1, 1)
+      } else {
+        lim <- lim[1L] * c(1 - const_y_mult, 1 + const_y_mult)
+      }
+    }
+
+    return(lim)
+  }
+
   # scale ylim based on current frame, and asp values
   scale_ranges <- function(frame, asp, ranges)
   {
@@ -1132,6 +1153,40 @@ new.replot_xts <- function(frame=1,asp=1,xlim=c(1,10),ylim=list(structure(c(1,10
     actions
   }
   
+  get_xcoords <- function(xts_object = NULL, at_posix = FALSE) {
+    # unique index for all series (always POSIXct)
+    xcoords <- Env$xycoords$x
+
+    if (!is.null(xts_object)) {
+      # get the x-coordinates for the observations in xts_object
+      xcoords <- merge(.xts(seq_along(xcoords), xcoords), xts_object,
+                       fill = na.locf,  # for duplicate index values
+                       join = "right", retside = c(TRUE, FALSE))
+
+      if (!isTRUE(Env$extend.xaxis)) {
+        xc <- Env$xycoords$x
+        xi <- .index(xcoords)
+
+        xsubset <- which(xi >= xc[1] & xi <= xc[length(xc)])
+        xcoords <- xcoords[xsubset]
+      }
+
+      if(Env$observation.based && !at_posix) {
+        result <- drop(coredata(xcoords))
+      } else {
+        result <- .index(xcoords)
+      }
+    } else {
+      if(Env$observation.based && !at_posix) {
+        result <- seq_along(xcoords)
+      } else {
+        result <- xcoords
+      }
+    }
+
+    return(result)
+  }
+
   # add_frame:
   #   append a plot frame to the plot window
   add_frame <- function(after, ylim=c(0,0), asp=0, fixed=FALSE) {
@@ -1150,30 +1205,78 @@ new.replot_xts <- function(frame=1,asp=1,xlim=c(1,10),ylim=list(structure(c(1,10
   update_frames <- function(headers=TRUE) {
     # use subset code here, without the subset part.
     from_by <- ifelse(headers,2,1)  
-    ylim <- get_ylim()
+    ylim <- Env$ylim
     for(y in seq(from_by,length(ylim),by=from_by)) {
       if(!attr(ylim[[y]],'fixed'))
+        # if fixed=FALSE set ylim to +/-Inf so update_frame() recalculates ylim
         ylim[[y]] <- structure(c(Inf,-Inf),fixed=FALSE)
     }
-    lapply(Env$actions,
-           function(x) {
-             if(!is.null(attr(x,"no.update")) && attr(x, "no.update"))
-               return(NULL)
-             frame <- abs(attr(x, "frame"))
-             fixed <- attr(ylim[[frame]],'fixed')
-             if(frame %% from_by == 0 && !fixed) {
-               lenv <- attr(x,"env")
-               if(is.list(lenv)) lenv <- lenv[[1]]
-               dat.range <- range(na.omit(lenv$xdata[Env$xsubset]))
-               min.tmp <- min(ylim[[frame]][1],dat.range,na.rm=TRUE)
-               max.tmp <- max(ylim[[frame]][2],dat.range,na.rm=TRUE)
-               ylim[[frame]] <<- structure(c(min.tmp,max.tmp),fixed=fixed)
-             }
-           })
+    update_frame <- function(x)
+    {
+      if(!is.null(attr(x,"no.update")) && attr(x, "no.update"))
+        return(NULL)
+      frame <- abs(attr(x, "frame"))
+      fixed <- attr(ylim[[frame]],'fixed')
+
+      if(frame %% from_by == 0 && !fixed) {
+        lenv <- attr(x,"env")
+        if(is.list(lenv)) lenv <- lenv[[1]]
+
+        lenv_data <- lenv$xdata
+        if(!is.null(lenv_data)) {
+          # some actions (e.g. addLegend) do not have 'xdata'
+          dat.range <- create_ylim(lenv$xdata[Env$xsubset])
+          min.tmp <- min(ylim[[frame]][1],dat.range,na.rm=TRUE)
+          max.tmp <- max(ylim[[frame]][2],dat.range,na.rm=TRUE)
+          ylim[[frame]] <<- structure(c(min.tmp,max.tmp),fixed=fixed)
+        }
+      }
+    }
+    lapply(Env$actions, update_frame)
     # reset all ylim values, by looking for range(env[[1]]$xdata)
     # xdata should be either coming from Env or if lenv, lenv
     set_ylim(ylim)
+
+    x_axis <- .index(Env$xdata[Env$xsubset][,1])
+    update_xaxis <- function(action)
+    {
+      # Create x-axis values using index values from data from all frames
+      action_frame <- abs(attr(action, "frame"))
+      if (action_frame %% from_by == 0) {
+        lenv <- attr(action, "env")
+        if (is.list(lenv)) {
+          lenv <- lenv[[1]]
+        }
+        lenv_data <- lenv$xdata
+        if (!is.null(lenv_data)) {
+          # some actions (e.g. addLegend) do not have 'xdata'
+
+          lenv_xaxis <- .index(lenv_data[Env$xsubset])
+          new_xaxis <- sort(unique(c(x_axis, lenv_xaxis)))
+
+          if (isTRUE(Env$extend.xaxis)) {
+            x_axis <<- new_xaxis
+          } else {
+            xaxis_rng <- range(x_axis, na.rm = TRUE)
+            x_axis <<- new_xaxis[new_xaxis >= xaxis_rng[1L] & new_xaxis <= xaxis_rng[2L]]
+          }
+        }
+      }
+    }
+    lapply(Env$actions, update_xaxis)
+
+    # Create x/y coordinates using the combined x-axis index
+    Env$xycoords <- xy.coords(x_axis, seq_along(x_axis))
+
+    if (Env$observation.based) {
+      Env$xlim <- c(1, length(get_xcoords()))
+      Env$xstep <- 1
+    } else {
+      Env$xlim <- range(get_xcoords(), na.rm = TRUE)
+      Env$xstep <- diff(get_xcoords()[1:2])
+    }
   }
+
   remove_frame <- function(frame) {
     rm.frames <- NULL
     max.frame <- max(abs(sapply(Env$actions, function(x) attr(x,"frame"))))
@@ -1199,7 +1302,6 @@ new.replot_xts <- function(frame=1,asp=1,xlim=c(1,10),ylim=list(structure(c(1,10
   next_frame <- function() {
     set_frame(max(abs(sapply(Env$actions,function(x) attr(x,"frame"))))+1L)
   }
-  move_frame   <- function() {}
   
   # actions
   Env$actions <- list()
@@ -1216,7 +1318,7 @@ new.replot_xts <- function(frame=1,asp=1,xlim=c(1,10),ylim=list(structure(c(1,10
   # subset function
   subset <- function(x="") {
     Env$xsubset <<- x
-    set_xlim(range(Env$xycoords$x, na.rm=TRUE))
+    set_xlim(range(get_xcoords(), na.rm=TRUE))
     ylim <- get_ylim()
     for(y in seq(2,length(ylim),by=2)) {
       if(!attr(ylim[[y]],'fixed'))
@@ -1257,6 +1359,7 @@ new.replot_xts <- function(frame=1,asp=1,xlim=c(1,10),ylim=list(structure(c(1,10
   replot_env$replot <- replot
   replot_env$get_actions <- get_actions
   replot_env$subset <- subset
+  replot_env$get_xcoords <- get_xcoords
   replot_env$update_frames <- update_frames
   replot_env$set_frame <- set_frame
   replot_env$get_frame <- get_frame
@@ -1270,6 +1373,7 @@ new.replot_xts <- function(frame=1,asp=1,xlim=c(1,10),ylim=list(structure(c(1,10
   replot_env$reset_ylim <- reset_ylim
   replot_env$set_ylim <- set_ylim
   replot_env$get_ylim <- get_ylim
+  replot_env$create_ylim <- create_ylim
   replot_env$set_pad <- set_pad
   replot_env$add_call <- add_call
 
@@ -1277,8 +1381,9 @@ new.replot_xts <- function(frame=1,asp=1,xlim=c(1,10),ylim=list(structure(c(1,10
 
   # function to plot the y-axis grid lines
   replot_env$Env$y_grid_lines <- function(ylim) {
-    p <- pretty(ylim,5)
-    p[p > ylim[1] & p < ylim[2]]
+    p <- pretty(ylim, Env$yaxis.ticks)
+    p <- p[p >= ylim[1] & p <= ylim[2]]
+    return(p)
   }
 
   # function to plot the x-axis grid lines
@@ -1288,9 +1393,10 @@ new.replot_xts <- function(frame=1,asp=1,xlim=c(1,10),ylim=list(structure(c(1,10
       invisible()
     } else {
       if (isTRUE(ticks.on)) ticks.on <- "auto"
-      atbt <- axTicksByTime(x, ticks.on = ticks.on)
-      segments(Env$xycoords$x[atbt], ylim[1L],
-               Env$xycoords$x[atbt], ylim[2L],
+      xcoords <- get_xcoords(at_posix = TRUE)
+      atbt <- axTicksByTime(.xts(, xcoords), ticks.on = ticks.on)
+      segments(xcoords[atbt], ylim[1L],
+               xcoords[atbt], ylim[2L],
                col = Env$theme$grid,
                lwd = Env$grid.ticks.lwd,
                lty = Env$grid.ticks.lty)
@@ -1317,35 +1423,28 @@ plot.replot_xts <- function(x, ...) {
   oxpd <- par(xpd = FALSE)
   usr <- par("usr")
 
-  # plot negative (underlay) actions
   last.frame <- x$get_frame()
   x$update_frames()
-  lapply(x$Env$actions,
-         function(aob) {
-           if(attr(aob,"frame") < 0) {
-             x$set_frame(attr(aob,"frame"),attr(aob,"clip"))
-             env <- attr(aob,"env")
-             if(is.list(env)) {
-               # if env is c(env, Env), convert to list
-               env <- unlist(lapply(env, function(x) eapply(x, eval)),recursive=FALSE)
-             }
-             eval(aob, env)
-           }
-         }
-  )
-  # plot positive (overlay) actions
-  lapply(x$Env$actions,
-         function(aob) {
-           if(attr(aob,"frame") > 0) {
-             x$set_frame(attr(aob,"frame"),attr(aob,"clip"))
-             env <- attr(aob,"env")
-             if(is.list(env)) {
-               env <- unlist(lapply(env, function(x) eapply(x, eval)),recursive=FALSE)
-             }
-             eval(aob, env)
-           }
-         }
-  )
+
+  is_underlay_action <- sapply(x$Env$actions, function(a) attr(a, "frame") < 0)
+
+  plot_action <- function(action)
+  {
+    x$set_frame(attr(action,"frame"),attr(action,"clip"))
+    env <- attr(action,"env")
+    if(is.list(env)) {
+      env <- unlist(lapply(env, function(x) eapply(x, eval)),recursive=FALSE)
+    }
+    eval(action, env)
+  }
+  # plot negative (underlay) actions first
+  for(a in x$Env$actions[ is_underlay_action]) {
+    plot_action(a)
+  }
+  # next, plot positive (overlay) actions
+  for(a in x$Env$actions[!is_underlay_action]) {
+    plot_action(a)
+  }
 
   x$set_frame(abs(last.frame),clip=FALSE)
   do.call("clip", as.list(usr))  # reset clipping region

@@ -43,10 +43,14 @@ function(x,n=1,keep=FALSE,...)
       xx <- x[sub]
       if(keep) xx <- structure(xx,keep=x[1:(NROW(x)+(-n))])
       xx
-    } else {
+    } else if(n < 0) {
       sub <- seq_len(max(length(x) + n, 0L))
       xx <- x[sub]
       if(keep) xx <- structure(xx,keep=x[((NROW(x)-(-n)+1):NROW(x))])
+      xx
+    } else {
+      xx <- x[0]
+      if(keep) xx <- structure(xx,keep=x[0])
       xx
     }
   } else {
@@ -55,10 +59,14 @@ function(x,n=1,keep=FALSE,...)
       xx <- x[sub,,drop=FALSE]
       if(keep) xx <- structure(xx,keep=x[1:(NROW(x)+(-n)),])
       xx
-    } else {
+    } else if(n < 0) {
       sub <- seq_len(max(NROW(x) + n, 0L))
       xx <- x[sub,,drop=FALSE]
       if(keep) xx <- structure(xx,keep=x[((NROW(x)-(-n)+1):NROW(x)),])
+      xx
+    } else {
+      xx <- x[0,,drop=FALSE]
+      if(keep) xx <- structure(xx,keep=x[0,])
       xx
     }
   }
@@ -76,10 +84,11 @@ function(x,n=1,keep=FALSE,...)
       stop(paste("incorrectly specified",sQuote("n"),sep=" "))
     # series periodicity
     sp <- periodicity(x)
+    sp.units <- sp[["units"]]
     # requested periodicity$units
     rpu <- np[length(np)]
     rpf <- ifelse(length(np) > 1, as.numeric(np[1]), 1)
-    if(rpu == sp$unit) {
+    if(rpu == sp.units) {
       n <- rpf
     } else {
       # if singular - add an s to make it work
@@ -92,7 +101,7 @@ function(x,n=1,keep=FALSE,...)
       if(!rpu %in% dt.options)
         stop(paste("n must be numeric or use",paste(dt.options,collapse=',')))
       dt <- dt.options[pmatch(rpu,dt.options)]
-      if(u.list[[dt]] > u.list[[sp$unit]]) {
+      if(u.list[[dt]] > u.list[[sp.units]]) {
         #  req is for higher freq data period e.g. 100 mins of daily data
         stop(paste("At present, without some sort of magic, it isn't possible",
              "to resolve",rpu,"from",sp$scale,"data"))
@@ -111,7 +120,7 @@ function(x,n=1,keep=FALSE,...)
         }
         if(keep) xx <- structure(xx,keep=x[1:(ep[length(ep)+(-rpf)])])
         return(xx)
-      } else {
+      } else if(rpf < 0) {
         n <- ep[length(ep)+rpf]
         if(is.null(dim(x))) {
           xx <- x[1:n]
@@ -119,6 +128,14 @@ function(x,n=1,keep=FALSE,...)
           xx <- x[1:n,,drop=FALSE]
         }
         if(keep) xx <- structure(xx,keep=x[(ep[length(ep)-(-rpf)]+1):NROW(x)])
+        return(xx)
+      } else {
+        if(is.null(dim(x))) {
+          xx <- x[0]
+        } else {
+          xx <- x[0,,drop=FALSE]
+        }
+        if(keep) xx <- structure(xx,keep=x[0])
         return(xx)
       }
     }
@@ -133,7 +150,7 @@ function(x,n=1,keep=FALSE,...)
     }
     if(keep) xx <- structure(xx,keep=x[1:(NROW(x)+(-n))])
     xx
-  } else {
+  } else if(n < 0) {
     if(abs(n) >= NROW(x))
       return(x[0])
     if(is.null(dim(x))) {
@@ -142,6 +159,14 @@ function(x,n=1,keep=FALSE,...)
       xx <- x[1:(NROW(x)+n),,drop=FALSE]
     }
     if(keep) xx <- structure(xx,keep=x[((NROW(x)-(-n)+1):NROW(x))])
+    xx
+  } else {
+    if(is.null(dim(x))) {
+      xx <- x[0]
+    } else {
+      xx <- x[0,,drop=FALSE]
+    }
+    if(keep) xx <- structure(xx,keep=x[0])
     xx
   }
 }

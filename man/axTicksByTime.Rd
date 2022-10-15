@@ -33,11 +33,16 @@ for those wishing to use outside of the internal function
 uses. In general it is most unlikely that the end user will
 call this function directly.
 
-The format.labels allows for standard formatting like
+The \code{format.labels} argument allows for standard formatting like
 that used in \code{format}, \code{strptime}, and \code{strftime}.
 }
 \value{
-A vector of index points to break on, possibly with the index names.
+A numeric vector of index element locations where tick marks should be drawn.
+These are \emph{locations} (e.g. 1, 2, 3, ...), \emph{not} the index
+timestamps.
+
+If possible, the result will be named using formatted values from the index
+timestamps. The names will be used for the tick mark labels.
 }
 \author{ Jeffrey A. Ryan }
 \seealso{ \code{\link{endpoints}} }

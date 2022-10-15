@@ -193,7 +193,10 @@ function(x, i, j, drop = FALSE, which.i=FALSE,...)
         i <- seq_len(nr)
 
       if(length(x)==0) {
-        x.tmp <- .xts(rep(NA,length(i)), .index(x)[i], dimnames=list(NULL, colnames(x)))
+        cdata <- rep(NA, length(i))
+        storage.mode(cdata) <- storage.mode(x)
+        x.tmp <- .xts(cdata, .index(x)[i], tclass(x), tzone(x),
+                      dimnames = list(NULL, colnames(x)))
         return(x.tmp)
       } else {
         if(USE_EXTRACT) {
@@ -240,7 +243,11 @@ function(x, i, j, drop = FALSE, which.i=FALSE,...)
     if(length(j) == 0 || (length(j)==1 && (is.na(j) || j==0))) {
       if(missing(i))
         i <- seq_len(nr)
-      return(.xts(coredata(x)[i,j,drop=FALSE], index=.index(x)[i]))
+
+      output <- .xts(coredata(x)[i,j,drop=FALSE], .index(x)[i],
+                     tclass(x), tzone(x), class = class(x))
+      xtsAttributes(output) <- xtsAttributes(x)
+      return(output)
     } 
     if(missing(i))
       return(.Call("extract_col", x, as.integer(j), drop, 1, nr, PACKAGE='xts'))
@@ -373,6 +380,11 @@ window_idx <- function(x, index. = NULL, start = NULL, end = NULL)
 window.xts <- function(x, index. = NULL, start = NULL, end = NULL, ...)
 {
   if(is.null(start) && is.null(end) && is.null(index.)) return(x)
+
+  # dispatch to window.zoo() for yearmon and yearqtr
+  if(any(tclass(x) %in% c("yearmon", "yearqtr"))) {
+    return(NextMethod(.Generic))
+  }
 
   firstlast <- window_idx(x, index., start, end) # firstlast may be NULL
 
