@@ -54,18 +54,15 @@ periodicity <- function(x, ...) {
       res$end <- end(x)
     }
     return(res)
-  } else {
-    p <- median(diff( .index(x) ))
   }
 
-  units <- 'days' # the default if p > hourly
-  scale <- 'yearly'# the default for p > quarterly
-  label <- 'year'
+  p <- median(diff( .index(x) ))
 
-  if( p < 60 ) {
-    units <- 'secs'
-    scale <- 'seconds'
-    label <- 'second'
+  # Date and POSIXct
+  if(p < 60) {
+    units <- "secs"
+    scale <- "seconds"
+    label <- "second"
   } else
   if(p < 3600) {
     units <- "mins"
@@ -74,39 +71,48 @@ periodicity <- function(x, ...) {
     p <- p/60L
   } else
   if(p < 86400) {
+    # < 1 day
     units <- "hours"
     scale <- "hourly"
     label <- "hour"
   } else
   if(p == 86400) {
+    units <- "days"
     scale <- "daily"
     label <- "day"
   } else
-  if( p <= 604800) {
+  if(p <= 604800) {
     # 86400 * 7
-    scale <- 'weekly'
+    units <- "days"
+    scale <- "weekly"
     label <- "week"
-  } else 
-  if( p <= 2678400 ) {
+  } else
+  if(p <= 2678400) {
     # 86400 * 31
-    scale <- 'monthly'
+    units <- "days"
+    scale <- "monthly"
     label <- "month"
   } else
-  if( p <=  7948800 ) {
+  if(p <= 7948800) {
     # 86400 * 92
-    scale <- 'quarterly'
+    units <- "days"
+    scale <- "quarterly"
     label <- "quarter"
+  } else {
+    # years
+    units <- "days"
+    scale <- "yearly"
+    label <- "year"
   }
 
-  structure(list(difftime = structure(p,units=units,class='difftime'),
+  structure(list(difftime = as.difftime(p, units = units),
                  frequency = p,
                  start = start(x),
                  end = end(x),
                  units = units,
                  scale = scale,
                  label = label),
-            class = 'periodicity') 
-  
+            class = 'periodicity')
 }
 
 `periodicity.old` <-

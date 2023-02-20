@@ -44,8 +44,31 @@ to.period <- to_period <- function(x, period='months', k=1, indexAt=NULL, name=N
     warning("missing values removed from data")
   }
 
+  if(is.character(period)) {
+    ep <- endpoints(x, period, k)
+  } else {
+    if(!is.numeric(period)) {
+      stop("'period' must be a character or a vector of endpoint locations")
+    }
+    if(!missing("k")) {
+      warning("'k' is ignored when using custom 'period' locations")
+    }
+    if(!is.null(indexAt)) {
+      warning("'indexAt' is ignored when using custom 'period' locations")
+      indexAt <- NULL
+    }
+    ep <- as.integer(period)
+    # ensure 'ep' starts with 0 and ends with nrow(x)
+    if(ep[1] != 0) {
+      ep <- c(0L, ep)
+    }
+    if (ep[length(ep)] != NROW(x)) {
+      ep <- c(ep, NROW(x))
+    }
+  }
+
   if(!OHLC) {
-    xx <- x[endpoints(x, period, k),]
+    xx <- x[ep, ]
   } else {
   if(!is.null(indexAt)) {
     index_at <- switch(indexAt,
@@ -67,13 +90,13 @@ to.period <- to_period <- function(x, period='months', k=1, indexAt=NULL, name=N
   if(is.null(name))
     cnames <- NULL
 
-  xx <- .Call("toPeriod", 
+  xx <- .Call(C_toPeriod,
               x, 
-              endpoints(x, period, k), 
+              ep,
               has.Vo(x), has.Vo(x,which=TRUE),
               has.Ad(x) && is.OHLC(x),
               index_at, 
-              cnames, PACKAGE='xts')
+              cnames)
   }
 
   if(!is.null(indexAt)) {
@@ -269,13 +292,13 @@ function(x, by, k=1, name=NULL, OHLC=TRUE, ...) {
   if (ep[length(ep)] != nrow(bins)) ep <- c(ep, nrow(bins))
   # end to.frequency-specific code
 
-  xx <- .Call("toPeriod", 
+  xx <- .Call(C_toPeriod,
               x, 
               ep,
               has.Vo(x), has.Vo(x,which=TRUE),
               has.Ad(x) && is.OHLC(x),
               FALSE,
-              cnames, PACKAGE='xts')
+              cnames)
 
   reclass(xx,xo)
 }

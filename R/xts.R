@@ -1,4 +1,4 @@
-
+#
 #   xts: eXtensible time-series 
 #
 #   Copyright (C) 2008  Jeffrey A. Ryan jeff.a.ryan @ gmail.com
@@ -31,6 +31,20 @@
 #  xts methods (which match foreign conversion methods in other files)
 #  are also defined below
 
+
+# xts() index attribute precedence should be:
+#   1. .index* value (e.g. .indexTZ)  # backward compatibility
+#   2. t* value (e.g. tzone)          # current function to override index attribute
+#   3. attribute on order.by          # overridden by either 2 above
+#
+# Do we always have to override the value of an existing tzone on the index
+# because the default value is Sys.getenv("TZ")?
+#
+# .xts() index attribute precedence is similar. But we cannot override tclass
+# because it's a formal argument with a specific default. Historically .xts()
+# has always set the tclass to POSIXct by default, whether or not the 'index'
+# argument already had a tclass attribute.
+
 `xts` <-
 function(x=NULL,
          order.by=index(x),
@@ -45,76 +59,107 @@ function(x=NULL,
   if(!timeBased(order.by))
     stop("order.by requires an appropriate time-based object")
 
-  if(inherits(order.by, .classesWithoutTZ)) {
-    if(!missing(tzone))
-      warning(paste(sQuote('tzone'),"setting ignored for ",
-                    paste(class(order.by), collapse=", "), " indexes"))
-    tzone <- "UTC"
-  }
-  
   #if(NROW(x) != length(order.by))
   if(NROW(x) > 0 && NROW(x) != length(order.by))
     stop("NROW(x) must match length(order.by)")
 
-  orderBy <- class(order.by)
+  order.by_ <- order.by  # make local copy and don't change order.by
+
   if(inherits(order.by, 'Date')) { 
     # convert to GMT POSIXct if specified
-    order.by <- .POSIXct(unclass(order.by)*86400, tz=tzone)
+    order.by_ <- .POSIXct(unclass(order.by) * 86400, tz = "UTC")
   }
 
-  if(!isOrdered(order.by, strictly=!unique)) {
-    indx <- order(order.by)
+  if(!isOrdered(order.by_, strictly = !unique)) {
+    indx <- order(order.by_)
     if(!is.null(x)) {
       if(NCOL(x) > 1 || is.matrix(x) || is.data.frame(x)) {
         x <- x[indx,,drop=FALSE]
       } else x <- x[indx]
     }
-    order.by <- order.by[indx]
+    order.by_ <- order.by_[indx]
   }
 
-  if(!is.null(x) || length(x) != 0 ) {
+  if(is.null(x)) {
+    x <- numeric(0)
+  } else if (NROW(x) > 0) {
     x <- as.matrix(x)
-  } else x <- numeric(0)
+  }
+  # else 'x' is a zero-length vector. Do not *add* dims via as.matrix().
+  # It's okay if 'x' already has dims.
 
-  if(orderBy[1L] == "timeDate" && missing(tzone)) {
-    tzone <- order.by@FinCenter
-  } else
-  if(!is.null(attr(order.by,"tzone")) && missing(tzone))
-    tzone <- attr(order.by, "tzone")
-  if(inherits(order.by,'dates'))
-    index <- as.numeric(as.POSIXct(strptime(as.character(order.by),"(%m/%d/%y %H:%M:%S)"))) #$format
-  else
-  index <- as.numeric(as.POSIXct(order.by))
+  if(inherits(order.by, "dates")) {
+    fmt <- "%m/%d/%y"
+    if(inherits(order.by, "chron")) {
+      fmt <- paste0("(", fmt, " %H:%M:%S)")
+    }
+    order.by_ <- strptime(as.character(order.by_), fmt)  # POSIXlt
+  }
+  index <- as.numeric(as.POSIXct(order.by_))
 
   if(any(!is.finite(index)))
     stop("'order.by' cannot contain 'NA', 'NaN', or 'Inf'")
 
-  # xts' tzone must only contain one element (POSIXlt tzone has 3)
-  tzone <- tzone[1L]
-
-  x <- structure(.Data=x,
-            index=structure(index,tzone=tzone,tclass=orderBy),
-            class=c('xts','zoo'),
-            ...)
-
+  # process index attributes
   ctor.call <- match.call(expand.dots = TRUE)
+
+  tformat. <- attr(order.by, "tformat")
   if(hasArg(".indexFORMAT")) {
     warning(sQuote(".indexFORMAT"), " is deprecated, use tformat instead.")
-    if(missing("tformat")) {
-      attr(attr(x, "index"), "tformat") <- eval.parent(ctor.call$.indexFORMAT)
-    }
+    tformat. <- eval.parent(ctor.call$.indexFORMAT)
+  } else if(hasArg("tformat")) {
+    tformat. <- eval.parent(ctor.call$tformat)
   }
+
+  tclass. <- attr(order.by, "tclass")
   if(hasArg(".indexCLASS")) {
     warning(sQuote(".indexCLASS"), " is deprecated, use tclass instead.")
-    if(missing("tclass")) {
-      attr(attr(x, "index"), "tclass") <- eval.parent(ctor.call$.indexCLASS)
+    tclass. <- eval.parent(ctor.call$.indexCLASS)
+  } else if(hasArg("tclass")) {
+    tclass. <- eval.parent(ctor.call$tclass)
+  } else if(is.null(tclass.)) {
+    tclass. <- class(order.by)
+    if(inherits(order.by, "POSIXt")) {
+      #tclass. <- tclass.[tclass. != "POSIXt"]
     }
   }
+
+  tzone. <- tzone  # default Sys.getenv("TZ")
   if(hasArg(".indexTZ")) {
     warning(sQuote(".indexTZ"), " is deprecated, use tzone instead.")
-    if(missing("tzone")) {
-      attr(attr(x, "index"), "tzone") <- eval.parent(ctor.call$.indexTZ)
+    tzone. <- eval.parent(ctor.call$.indexTZ)
+  } else if(hasArg("tzone")) {
+    tzone. <- eval.parent(ctor.call$tzone)
+  } else {
+    # no tzone argument
+    if(inherits(order.by, "timeDate")) {
+      tzone. <- order.by@FinCenter
+    } else if(!is.null(attr(order.by, "tzone"))) {
+      tzone. <- attr(order.by, "tzone")
     }
+  }
+  if(inherits(order.by, .classesWithoutTZ)) {
+      if((hasArg(".indexTZ") || hasArg("tzone")) && !isUTC(tzone.)) {
+        warning(paste(sQuote('tzone'),"setting ignored for ",
+                      paste(class(order.by), collapse=", "), " indexes"))
+      }
+      tzone. <- "UTC" # change anything in isUTC() to UTC
+  }
+  # xts' tzone must only contain one element (POSIXlt tzone has 3)
+  tzone. <- tzone.[1L]
+
+  x <- structure(.Data = x,
+                 index = structure(index, tzone = tzone.,
+                                   tclass = tclass., tformat = tformat.),
+                 class=c('xts','zoo'),
+                 ...)
+
+  # remove any index attributes that came through '...'
+  index.attr <- c(".indexFORMAT", "tformat",
+                  ".indexCLASS", "tclass",
+                  ".indexTZ", "tzone")
+  for(iattr in index.attr) {
+    attr(x, iattr) <- NULL
   }
 
   if(!is.null(attributes(x)$dimnames[[1]]))
@@ -131,11 +176,14 @@ function(x=NULL, index, tclass=c("POSIXct","POSIXt"),
     if( !isOrdered(index, increasing=TRUE, strictly=unique) )
       stop('index is not in ',ifelse(unique, 'strictly', ''),' increasing order')
   }
+
+  index_out <- index
+
   if(!is.numeric(index) && timeBased(index))
-    index <- as.numeric(as.POSIXct(index))
+    index_out <- as.numeric(as.POSIXct(index))
   if(!is.null(x) && NROW(x) != length(index))
     stop("index length must match number of observations")
-  if(any(!is.finite(index)))
+  if(any(!is.finite(index_out)))
     stop("'index' cannot contain 'NA', 'NaN', or 'Inf'")
 
   if(!is.null(x)) {
@@ -146,57 +194,68 @@ function(x=NULL, index, tclass=c("POSIXct","POSIXt"),
     x <- vector(storage.mode(x))
   } else x <- numeric(0)
 
+  # process index attributes
   ctor.call <- match.call(expand.dots = TRUE)
 
-  tformat <- NULL
+  tformat. <- attr(index, "tformat")
   if(hasArg(".indexFORMAT")) {
     warning(sQuote(".indexFORMAT"), " is deprecated, use tformat instead.")
-    tformat <- eval.parent(ctor.call$.indexFORMAT)
+    tformat. <- eval.parent(ctor.call$.indexFORMAT)
   } else if(hasArg("tformat")) {
-    tformat <- eval.parent(ctor.call$tformat)
-  } else {
-    tformat <- attr(index, "tformat")
+    tformat. <- eval.parent(ctor.call$tformat)
   }
 
+  tclass. <- tclass  # default POSIXct
   if(hasArg(".indexCLASS")) {
     warning(sQuote(".indexCLASS"), " is deprecated, use tclass instead.")
-    tclass <- eval.parent(ctor.call$.indexCLASS)
-  } else if(missing("tclass")) {
-    # compare tclass on the index with tclass argument because the
-    # tclass argument will override the index attribute, but it shouldn't...
-### FIXME:
-### This warning causes errors in dependencies (e.g. portfolioBacktest,
-### when the warning is thrown from PerformanceAnalytics). Reinstate this
-### warning after fixing downstream packages.
-###    index.class <- attr(index, 'tclass')
-###    default.class <- c("POSIXct", "POSIXt")
-###    if(!is.null(index.class) && !all(index.class %in% default.class)) {
-###      warning("the index tclass attribute is ", index.class,
-###              " but will be changed to (POSIXct, POSIXt)")
-###    }
+    tclass. <- eval.parent(ctor.call$.indexCLASS)
+  } else if(hasArg("tclass")) {
+    tclass. <- eval.parent(ctor.call$tclass)
+  } else {
+    # no tclass argument
+    tclass. <- attr(index, "tclass")
+    if(is.null(tclass.) && timeBased(index)) {
+      tclass. <- class(index)
+    } else {
+      if(!identical(tclass., c("POSIXct", "POSIXt"))) {
+        # index argument has 'tclass' attribute but it will be ignored
+        # FIXME:
+        # This warning causes errors in dependencies (e.g. portfolioBacktest,
+        # when the warning is thrown from PerformanceAnalytics). Reinstate this
+        # warning after fixing downstream packages.
+        #      warning("the index tclass attribute is ", index.class,
+        #              " but will be changed to (POSIXct, POSIXt)")
+        tclass. <- tclass  # default POSIXct
+      }
+    }
   }
 
+  tzone. <- tzone  # default Sys.getenv("TZ")
   if(hasArg(".indexTZ")) {
-    warning(sQuote(".indexTZ"), " is deprecated and will be ignored,",
-            " use tzone instead.")
+    warning(sQuote(".indexTZ"), " is deprecated, use tzone instead.")
+    tzone. <- eval.parent(ctor.call$.indexTZ)
+  } else if(hasArg("tzone")) {
+    tzone. <- eval.parent(ctor.call$tzone)
+  } else {
+    # no tzone argument
+    if(inherits(index, "timeDate")) {
+      tzone. <- index@FinCenter
+    } else if(!is.null(attr(index, "tzone"))) {
+      tzone. <- attr(index, "tzone")
+    }
   }
-  # don't overwrite index tzone if tzone arg is missing
-  if(missing("tzone")) {
-    if(!is.null(index.tz <- attr(index,'tzone')))
-      tzone <- index.tz
+  if(inherits(index, .classesWithoutTZ)) {
+      if((hasArg(".indexTZ") || hasArg("tzone")) && !isUTC(tzone.)) {
+        warning(paste(sQuote('tzone'),"setting ignored for ",
+                      paste(class(index), collapse=", "), " indexes"))
+      }
+      tzone. <- "UTC" # change anything in isUTC() to UTC
   }
   # xts' tzone must only contain one element (POSIXlt tzone has 3)
   tzone <- tzone[1L]
 
-  xx <- .Call("add_xtsCoreAttributes", x, index, tzone, tclass,
-              c('xts','zoo'), tformat, PACKAGE='xts')
-
-  # ensure there are no rownames
-  rn <- dimnames(xx)[[1]]
-  if(!is.null(rn)) {
-    attr(xx, '.ROWNAMES') <- rn
-    dimnames(xx)[1] <- list(NULL)
-  }
+  xx <- .Call(C_add_xtsCoreAttributes, x, index_out, tzone., tclass.,
+              c('xts','zoo'), tformat.)
 
   # remove any index attributes that came through '...'
   # and set any user attributes (and/or dim, dimnames, etc)
@@ -207,6 +266,14 @@ function(x=NULL, index, tclass=c("POSIXct","POSIXt"),
     dot.attrs[drop.attr] <- NULL
     attributes(xx) <- c(attributes(xx), dot.attrs)
   }
+
+  # ensure there are no rownames (they may have come though dimnames)
+  rn <- dimnames(xx)[[1]]
+  if(!is.null(rn)) {
+    attr(xx, '.ROWNAMES') <- rn
+    dimnames(xx)[1] <- list(NULL)
+  }
+
   xx
 }
 
@@ -226,6 +293,9 @@ function(x, match.to, error=FALSE, ...) {
     }
     attr(x, ".CLASS") <- CLASS(match.to)
     xtsAttributes(x) <- xtsAttributes(match.to)
+    tclass(x) <- tclass(match.to)
+    tformat(x) <- tformat(match.to)
+    tzone(x) <- tzone(match.to)
   }
   oldCLASS <- CLASS(x)
   # should this be is.null(oldCLASS)?

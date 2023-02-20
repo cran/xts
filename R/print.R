@@ -18,33 +18,125 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
-`print.xts` <-
-function(x,fmt,...) {
+print.xts <-
+  function(x,
+           fmt,
+           ...,
+           show.rows = 10,
+           max.rows = 100)
+{
   check.TZ(x)
-  if(missing(fmt)) 
+
+  nr <- NROW(x)
+  nc <- NCOL(x)
+
+  if (missing(max.rows)) {
+    # the user didn't specify a value; use the global option value if it's
+    # set; if it's not set, use the default value
+    max.rows <- getOption("xts.print.max.rows", max.rows)
+  }
+
+  # 'max' in print.default() takes precedence over 'show.rows'
+  if (hasArg("max")) {
+    # 'max' is the number of *elements* (not rows) to print
+    if (nr < 1) {
+      show.rows <- 0
+    } else {
+      # convert 'max' to 'show.rows'
+      max.arg <- match.call()$max
+      if (!is.null(max.arg)) {
+        show.rows <- trunc(max.arg / nc)
+      }
+    }
+  } else if (missing(show.rows)) {
+    # the user didn't specify a value; use the global option value if it's
+    # set; if it's not set, use the default value
+    show.rows <- getOption("xts.print.show.rows", show.rows)
+  }
+
+  if (missing(fmt)) {
     fmt <- tformat(x)
-  if(is.null(fmt))
+  }
+  if (is.null(fmt)) {
     fmt <- TRUE
-  
-  xx <- coredata(x, fmt)
-  if(length(xx) == 0) {
-    if(!is.null(dim(x))) {
-      p <- structure(vector(storage.mode(xx)), dim = dim(x),
-                     dimnames = list(format(index(x)),colnames(x)))
+  }
+
+  if (!hasArg("quote")) {
+    quote <- FALSE
+  }
+  if (!hasArg("right")) {
+    right <- TRUE
+  }
+
+  if (nr > max.rows && nr > 2 * show.rows) {
+    # 'show.rows' can't be more than 2*nrow(x) or observations will be printed
+    # twice, once before the "..." and once after.
+    seq.row <- seq_len(show.rows)
+    seq.col <- seq_len(nc)
+    seq.n <- (nr - show.rows + 1):nr
+
+    index <- as.character(index(x))
+    index <- c(index[seq.row], "...", index[seq.n])
+
+    # as.matrix() to ensure we have dims
+    # unclass() avoids as.matrix() method dispatch
+    m <- as.matrix(unclass(x))
+
+    y <- rbind(
+      format(m[seq.row, seq.col, drop = FALSE]),
+      format(matrix(rep("", nc), nrow = 1)),
+      format(m[seq.n, seq.col, drop = FALSE])
+    )
+    rownames(y) <- format(index, justify = "right")
+    colnames(y) <- colnames(m[, seq.col, drop = FALSE])
+  } else {
+    y <- coredata(x, fmt)
+  }
+
+  if (length(y) == 0) {
+    if (!is.null(dim(x))) {
+      p <- structure(vector(storage.mode(y)), dim = dim(x),
+                     dimnames = list(format(index(x)), colnames(x)))
       print(p)
     } else {
       cat('Data:\n')
-      print(vector(storage.mode(xx)))
+      print(vector(storage.mode(y)))
       cat('\n')
       cat('Index:\n')
       index <- index(x)
-      if(length(index) == 0) {
+      if (length(index) == 0) {
         print(index)
       } else {
-        str(index(x))
+        print(str(index))
       }
     }
-  } else print(xx, ...)
-}
+  } else {
+    # ensure 'y' has dims and row names
+    if (is.null(dim(y))) {
+      y_names <- as.character(index(x))
+      y <- matrix(y, nrow = length(y), dimnames = list(y_names, NULL))
+    }
+    # Create column names as right-justified column indexes. They're left-
+    # justified by default, which is different than if there are column names.
+    if (is.null(colnames(y))) {
+      cindex <- utils::capture.output(print(y[1,,drop = FALSE]))[1]
+      cindex <- sub("\\s+$", "", cindex)  # remove trailing spaces
 
+      # remove the leading spaces caused by the index,
+      # (plus the space between the index and the first column)
+      max_nchar <- max(nchar(rownames(y))) + 1
+      cindex <- substr(cindex, max_nchar, nchar(cindex))
+
+      # split string into vector for each column
+      cindex <- paste0(strsplit(cindex, "]")[[1]], "]")
+      # remove leading space
+      cindex <- sub("^\\s", "", cindex)
+
+      colnames(y) <- cindex
+    }
+
+    print(y, quote = quote, right = right, ...)
+  }
+
+  invisible(x)
+}

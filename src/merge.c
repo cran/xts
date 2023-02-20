@@ -25,46 +25,86 @@
 #include <Rdefines.h>
 #include "xts.h"
 
-SEXP xts_make_names(SEXP colnames, SEXP env)
+SEXP xts_merge_make_colnames (SEXP colnames, SEXP suffixes, SEXP check_names, SEXP env)
 {
-  SEXP s, t, unique;
-  PROTECT(s = t = allocList(3));
-  SET_TYPEOF(s, LANGSXP);
-  SETCAR(t, install("make.names"));
-  t = CDR(t);
-  SETCAR(t, colnames);
-  t = CDR(t);
-  PROTECT(unique = allocVector(LGLSXP, 1));
-  LOGICAL(unique)[0] = 1;
-  SETCAR(t, unique);
-  SET_TAG(t, install("unique"));
-  SEXP res = PROTECT(eval(s, env));
-  UNPROTECT(3);
-  return(res);
+  int p = 0;
+  SEXP newcolnames = colnames;
+
+  // add suffixes
+  if(R_NilValue != suffixes) {
+    SEXP s, t;
+    PROTECT(s = t = allocList(4)); p++;
+    SET_TYPEOF(s, LANGSXP);
+
+    SETCAR(t, install("paste")); t = CDR(t);
+    SETCAR(t, newcolnames);      t = CDR(t);
+    SETCAR(t, suffixes);         t = CDR(t);
+    SETCAR(t, mkString(""));
+    SET_TAG(t, install("sep"));
+
+    PROTECT(newcolnames = eval(s, env)); p++;
+  }
+
+  // check that names are 'valid R names'
+  if (LOGICAL(check_names)[0]) {
+    SEXP s, t, unique;
+    PROTECT(s = t = allocList(3)); p++;
+    SET_TYPEOF(s, LANGSXP);
+
+    PROTECT(unique = ScalarLogical(1)); p++;
+
+    SETCAR(t, install("make.names")); t = CDR(t);
+    SETCAR(t, newcolnames);           t = CDR(t);
+    SETCAR(t, unique);
+    SET_TAG(t, install("unique"));
+
+    PROTECT(newcolnames = eval(s, env)); p++;
+  }
+
+  UNPROTECT(p);
+  return(newcolnames);
 }
 
-SEXP xts_colname_suffixes(SEXP colnames, SEXP suffixes, SEXP env)
+SEXP xts_merge_combine_dimnames (SEXP _x, SEXP _y, int ncol_x, int ncol_y, SEXP _orig_colnames)
 {
-  SEXP s, t;
-  PROTECT(s = t = allocList(4));
-  SET_TYPEOF(s, LANGSXP);
+  int p = 0;
+  int ncols = ncol_x + ncol_y;
+  SEXP colnames = PROTECT(allocVector(STRSXP, ncols)); p++;
 
-  SETCAR(t, install("paste"));
-  t = CDR(t);
+  SEXP dimnames_x = PROTECT(getAttrib(_x, R_DimNamesSymbol)); p++;
+  SEXP dimnames_y = PROTECT(getAttrib(_y, R_DimNamesSymbol)); p++;
 
-  SETCAR(t, colnames);
-  t = CDR(t);
+  // do 'x' and/or 'y' have column names?
+  SEXP colnames_x = R_NilValue;
+  SEXP colnames_y = R_NilValue;
+  if (!isNull(dimnames_x) && !isNull(VECTOR_ELT(dimnames_x, 1))) {
+    colnames_x = VECTOR_ELT(dimnames_x, 1);
+  }
+  if (!isNull(dimnames_y) && !isNull(VECTOR_ELT(dimnames_y, 1))) {
+    colnames_y = VECTOR_ELT(dimnames_y, 1);
+  }
 
-  SETCAR(t, suffixes);
-  t = CDR(t);
+  // time to combine the two
+  for (int i = 0; i < ncols; i++) {
+    if (i < ncol_x) {
+      // copy column names from 'x'
+      if (R_NilValue != colnames_x) {
+        SET_STRING_ELT(colnames, i, STRING_ELT(colnames_x, i));
+      } else {
+        SET_STRING_ELT(colnames, i, STRING_ELT(_orig_colnames, i));
+      }
+    } else {
+      // copy column names from 'y'
+      if (R_NilValue != colnames_y) {
+        SET_STRING_ELT(colnames, i, STRING_ELT(colnames_y, i - ncol_x));
+      } else {
+        SET_STRING_ELT(colnames, i, STRING_ELT(_orig_colnames, i));
+      }
+    }
+  }
 
-  SETCAR(t, mkString(""));
-  SET_TAG(t, install("sep"));
-
-  SEXP res = PROTECT(eval(s, env));
-
-  UNPROTECT(2);
-  return(res);
+  UNPROTECT(p);
+  return(colnames);
 }
 
 /* 
@@ -151,24 +191,62 @@ SEXP do_merge_xts (SEXP x, SEXP y,
   if( TYPEOF(retside) != LGLSXP )
     error("retside must be a logical value of TRUE or FALSE");
 
+  /* determine number of rows and columns to use for the inputs */
+  int return_x_data = LOGICAL(retside)[0];
+  int is_xobs_zero = LENGTH(x) == 0;
+  int is_xdim_null = isNull(getAttrib(x, R_DimSymbol));
+
   nrx = nrows(x);
   ncx = ncols(x);
-  /* if object is zero-width */
-  if( LENGTH(x)==0 || INTEGER(retside)[0]==0 ) {
-    nrx = nrows(xindex);
+
+  if (return_x_data) {
+    if (is_xdim_null) {
+      if (is_xobs_zero) {
+        nrx = LENGTH(xindex);
+        ncx = 0;
+        PROTECT(x = coerceVector(x, TYPEOF(y))); p++;
+      }
+    } else {
+      if (is_xobs_zero) {
+        nrx = LENGTH(xindex);
+        ncx = INTEGER(getAttrib(x, R_DimSymbol))[1];
+        PROTECT(x = coerceVector(x, TYPEOF(y))); p++;
+      }
+    }
+  } else {
+    nrx = LENGTH(xindex);
     ncx = 0;
     PROTECT(x = coerceVector(x, TYPEOF(y))); p++;
   }
-  
+
+  int return_y_data = LOGICAL(retside)[1];
+  int is_yobs_zero = LENGTH(y) == 0;
+  int is_ydim_null = isNull(getAttrib(y, R_DimSymbol));
+
   nry = nrows(y);
   ncy = ncols(y);
-  /* if object is zero-width */
-  if( LENGTH(y)==0 || INTEGER(retside)[1]==0) {
-    nry = nrows(yindex);
+
+  if (return_y_data) {
+    if (is_ydim_null) {
+      if (is_yobs_zero) {
+        nry = LENGTH(yindex);
+        ncy = 0;
+        PROTECT(y = coerceVector(y, TYPEOF(x))); p++;
+      }
+    } else {
+      if (is_yobs_zero) {
+        nry = LENGTH(yindex);
+        ncy = INTEGER(getAttrib(y, R_DimSymbol))[1];
+        PROTECT(y = coerceVector(y, TYPEOF(x))); p++;
+      }
+    }
+  } else {
+    nry = LENGTH(yindex);
     ncy = 0;
     PROTECT(y = coerceVector(y, TYPEOF(x))); p++;
   }
 
+  /* do the inputs have any data to merge? */
   len = nrx + nry;
   if (len < 1 && ncx < 1 && ncy < 1) {
     /* nothing to do, return empty xts object */
@@ -177,6 +255,7 @@ SEXP do_merge_xts (SEXP x, SEXP y,
     SET_TYPEOF(s, LANGSXP);
     SETCAR(t, install("xts"));
     SEXP out = PROTECT(eval(s, env)); p++;
+    SET_TYPEOF(out, TYPEOF(x));
     UNPROTECT(p);
     return out;
   }
@@ -285,12 +364,32 @@ SEXP do_merge_xts (SEXP x, SEXP y,
   }
 
   if(i == 0) {
-    /* if no rows match, return an empty xts object, similar in style to zoo */
-    PROTECT( result = allocVector(TYPEOF(x), 0) ); p++;
+    /* return a zero-length xts object if no rows match, consistent w/zoo */
+    PROTECT( result = allocMatrix(TYPEOF(x), 0, ncx + ncy) ); p++;
     PROTECT( index  = allocVector(TYPEOF(xindex), 0) ); p++;
+    // set tclass, tzone, and tformat from x-index
+    setAttrib(index, xts_IndexTzoneSymbol, getAttrib(xindex, xts_IndexTzoneSymbol));
+    setAttrib(index, xts_IndexTclassSymbol, getAttrib(xindex, xts_IndexTclassSymbol));
+    setAttrib(index, xts_IndexTformatSymbol, getAttrib(xindex, xts_IndexTformatSymbol));
     SET_xtsIndex(result, index);
+
+    /* dimnames */
+    if(!isNull(colnames)) { // only set DimNamesSymbol if passed colnames is not NULL
+
+      SEXP newcolnames = PROTECT(xts_merge_combine_dimnames(x, y, ncx, ncy, colnames)); p++;
+      newcolnames = PROTECT(xts_merge_make_colnames(newcolnames, suffixes, check_names, env)); p++;
+
+      SEXP dimnames = PROTECT(allocVector(VECSXP, 2)); p++;
+      SET_VECTOR_ELT(dimnames, 0, R_NilValue);
+      SET_VECTOR_ELT(dimnames, 1, newcolnames);
+
+      setAttrib(result, R_DimNamesSymbol, dimnames);
+    }
+    /* dimnames */
+
     if(LOGICAL(retclass)[0])
       setAttrib(result, R_ClassSymbol, getAttrib(x, R_ClassSymbol));
+
     UNPROTECT(p);
     return result;
   }
@@ -987,8 +1086,8 @@ SEXP do_merge_xts (SEXP x, SEXP y,
      isNull(getAttrib(y,R_DimSymbol))) {
      /* retside=c(F,T) AND is.null(dim(y)) */ 
      setAttrib(result, R_DimSymbol, R_NilValue);
-  } else /* set Dim and DimNames */
-  if(num_rows >= 0 && (ncx + ncy) >= 0) {
+  } else /* set Dim and DimNames if there is at least 1 column */
+  if((ncx + ncy) > 0) {
     /* DIM */
     PROTECT(attr = allocVector(INTSXP, 2));
     INTEGER(attr)[0] = num_rows;
@@ -997,40 +1096,13 @@ SEXP do_merge_xts (SEXP x, SEXP y,
     UNPROTECT(1);
     /* DIMNAMES */
     if(!isNull(colnames)) { // only set DimNamesSymbol if passed colnames is not NULL
-      SEXP dimnames, dimnames_x, dimnames_y, newcolnames;
-      PROTECT(dimnames = allocVector(VECSXP, 2)); p++;
-      PROTECT(dimnames_x = getAttrib(x, R_DimNamesSymbol)); p++;
-      PROTECT(dimnames_y = getAttrib(y, R_DimNamesSymbol)); p++;
-      PROTECT(newcolnames = allocVector(STRSXP, ncx+ncy)); p++;
-      for(i = 0; i < (ncx + ncy); i++) {
-        if( i < ncx ) {
-          if(!isNull(dimnames_x) && !isNull(VECTOR_ELT(dimnames_x,1))) {
-            SET_STRING_ELT(newcolnames, i, STRING_ELT(VECTOR_ELT(dimnames_x,1),i));
-          } else {
-            SET_STRING_ELT(newcolnames, i, STRING_ELT(colnames, i));
-          }
-        } else { // i >= ncx; 
-          if(!isNull(dimnames_y) && !isNull(VECTOR_ELT(dimnames_y,1))) {
-            SET_STRING_ELT(newcolnames, i, STRING_ELT(VECTOR_ELT(dimnames_y,1),i-ncx));
-          } else {
-            SET_STRING_ELT(newcolnames, i, STRING_ELT(colnames, i));
-          }
-        }
-      }
 
-      // add suffixes
-      if(R_NilValue != suffixes) {
-        newcolnames = PROTECT(xts_colname_suffixes(newcolnames, suffixes, env)); p++;
-      }
+      SEXP newcolnames = PROTECT(xts_merge_combine_dimnames(x, y, ncx, ncy, colnames)); p++;
+      newcolnames = PROTECT(xts_merge_make_colnames(newcolnames, suffixes, check_names, env)); p++;
 
-      SET_VECTOR_ELT(dimnames, 0, R_NilValue);  // ROWNAMES are NULL
-      if(LOGICAL(check_names)[0]) {
-        SET_VECTOR_ELT(dimnames, 1, xts_make_names(newcolnames, env));
-      } else {
-        SET_VECTOR_ELT(dimnames, 1, newcolnames);
-      }
- 
-      //SET_VECTOR_ELT(dimnames, 1, newcolnames); // COLNAMES are passed in
+      SEXP dimnames = PROTECT(allocVector(VECSXP, 2)); p++;
+      SET_VECTOR_ELT(dimnames, 0, R_NilValue);
+      SET_VECTOR_ELT(dimnames, 1, newcolnames);
       setAttrib(result, R_DimNamesSymbol, dimnames);
     }
   } else {
@@ -1080,9 +1152,13 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
   SEXP coerce = PROTECT(ScalarInteger(0)); P++;
 
   if(args != R_NilValue) type_of = TYPEOF(CAR(args));
+
+  // number of columns in the output
   while(args != R_NilValue) {
+
+    ncs += xts_ncols(CAR(args));
+
     if(length(CAR(args)) > 0) {
-      ncs += ncols(CAR(args));
       /* need to convert all objects if one non-zero-width needs to be converted */
       if(TYPEOF(CAR(args)) != type_of) {
         INTEGER(coerce)[0] = 1;
@@ -1090,17 +1166,6 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
     }
     args = CDR(args);
     n++;
-  }
-
-  /* return empty xts if all objects have no columns */
-  if(ncs < 1) {
-    SEXP s, t;
-    PROTECT(s = t = allocList(1)); P++;
-    SET_TYPEOF(s, LANGSXP);
-    SETCAR(t, install("xts"));
-    SEXP out = PROTECT(eval(s, env)); P++;
-    UNPROTECT(P);
-    return out;
   }
 
   /* build an index to be used in all subsequent calls */
@@ -1215,7 +1280,7 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
                                     coerce), idxtmp);
 
       nr = nrows(xtmp);
-      nc = (0 == nr) ? 0 : ncols(xtmp);  // ncols(numeric(0)) == 1
+      nc = xts_ncols(xtmp);
       ncs += nc;
 
       /* Use colnames from merged object, if it has them. Otherwise, use
@@ -1312,21 +1377,12 @@ SEXP mergeXts (SEXP args) // mergeXts {{{
       INTEGER(dim)[1] = ncs;
       setAttrib(result, R_DimSymbol, dim);
 
-      SEXP dimnames;
-      PROTECT(dimnames = allocVector(VECSXP, 2)); P++;
-      SET_VECTOR_ELT(dimnames, 0, R_NilValue); // rownames are always NULL in xts
+      PROTECT(NewColNames = xts_merge_make_colnames(NewColNames, suffixes, check_names, env)); P++;
 
-      // Add suffixes
-      if(R_NilValue != suffixes) {
-        NewColNames = PROTECT(xts_colname_suffixes(NewColNames, suffixes, env)); P++;
-      }
+      SEXP dimnames = PROTECT(allocVector(VECSXP, 2)); P++;
+      SET_VECTOR_ELT(dimnames, 0, R_NilValue);
+      SET_VECTOR_ELT(dimnames, 1, NewColNames);
 
-      /* colnames, assure they are unique before returning */
-      if(LOGICAL(check_names)[0]) {
-        SET_VECTOR_ELT(dimnames, 1, xts_make_names(NewColNames, env));
-      } else {
-        SET_VECTOR_ELT(dimnames, 1, NewColNames);
-      }
       setAttrib(result, R_DimNamesSymbol, dimnames);
     }
 

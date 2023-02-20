@@ -20,7 +20,7 @@
 
 
 na.omit.xts <- function(object, ...) {
-  xx <- .Call('na_omit_xts', object, PACKAGE="xts")
+  xx <- .Call(C_na_omit_xts, object)
   if(length(xx)==0)
     return(structure(xts(,),.Dim=c(0,NCOL(object))))
   naa <- attr(xx,'na.action')
@@ -41,7 +41,7 @@ na.omit.xts <- function(object, ...) {
 }
 
 na.exclude.xts <- function(object, ...) {
-  xx <- .Call('na_omit_xts', object, PACKAGE="xts")
+  xx <- .Call(C_na_omit_xts, object)
   naa <- attr(xx,'na.action')
   if(length(naa) == 0)
     return(xx)
@@ -93,14 +93,26 @@ na.replace <- function(x) {
 }
 
 na.locf.xts <- function(object, na.rm=FALSE, fromLast=FALSE, maxgap=Inf, ...) {
-    stopifnot(is.xts(object))
     maxgap <- min(maxgap, NROW(object))
     if(length(object) == 0)
       return(object)
     if(hasArg("x") || hasArg("xout"))
-      return(NextMethod())
-    x <- .Call("na_locf", object, fromLast, maxgap, Inf, PACKAGE="xts")
+      return(NextMethod(.Generic))
+    x <- .Call(C_na_locf, object, fromLast, maxgap, Inf)
     if(na.rm) {
       return(structure(na.omit(x),na.action=NULL))
     } else x
+}
+
+na.fill.xts <- function(object, fill, ix, ...) {
+  if (length(fill) == 1 && missing(ix)) {
+    # na.fill0() may change the storage type of 'object'
+    # make sure 'fill' argument is same type as 'object'
+    fill. <- fill
+    storage.mode(fill.) <- storage.mode(object)
+
+    return(na.fill0(object, fill.))
+  } else {
+    NextMethod(.Generic)
+  }
 }

@@ -25,22 +25,35 @@
 #include <Rdefines.h>
 #include "xts.h"
 
+int xts_ncols (SEXP _x)
+{
+  int ncols_x = 0;
+
+  // use dims if possible
+  if (isNull(getAttrib(_x, R_DimSymbol))) {
+    // no dims, so we want:
+    // * ncols_x == 0 for zero-length vectors, and
+    // * ncols_x == 1 for anything else that doesn't have dims
+    ncols_x = LENGTH(_x) > 0;
+  } else {
+    // use dims
+    ncols_x = INTEGER(getAttrib(_x, R_DimSymbol))[1];
+  }
+
+  return ncols_x;
+}
+
 SEXP number_of_cols (SEXP args)
 {
-  SEXP tcols;
-  int P=0;
-
+  int i = 0;
   args = CDR(args); // calling function name
 
-  PROTECT(tcols = allocVector(INTSXP, length(args))); P++;
-  int i=0;
-  for(;args != R_NilValue; i++, args=CDR(args)) {
-/*    if( TAG(args) == R_NilValue ) { */
-      if( length(CAR(args)) > 0) {
-        INTEGER(tcols)[i] = ncols(CAR(args));
-      } else INTEGER(tcols)[i] = (int)0;
-/*    } */
+  SEXP tcols = PROTECT(allocVector(INTSXP, length(args)));
+
+  for(;args != R_NilValue; i++, args = CDR(args)) {
+    INTEGER(tcols)[i] = xts_ncols(CAR(args));
   }
-  UNPROTECT(P);
+
+  UNPROTECT(1);
   return tcols;
 }

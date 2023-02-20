@@ -100,7 +100,7 @@
   if(missing(j)) {
     j <- 1:NCOL(x)
   }
-  .Call('_do_subset_xts', x, i, j, FALSE, PACKAGE='xts')
+  .Call(C__do_subset_xts, x, i, j, FALSE)
 }
 
 `.subset.xts` <- `[.xts` <-
@@ -111,8 +111,16 @@ function(x, i, j, drop = FALSE, which.i=FALSE,...)
     dimx <- dim(x)
     if(is.null(dimx)) {
       nr <- length(x)
-      if(nr==0 && !which.i)
-        return( xts(rep(NA,length(index(x))), index(x))[i] )
+      if(nr==0 && !which.i) {
+        idx <- index(x)
+        if(length(idx) == 0) {
+          # this is an empty xts object (zero-length index and no columns)
+          # return it unchanged to match [.zoo
+          return(x)
+        } else {
+          return(xts(rep(NA, length(idx)), idx)[i])
+        }
+      }
       nr <- length(.index(x))
       nc <- 1L
     } else {
@@ -124,7 +132,7 @@ function(x, i, j, drop = FALSE, which.i=FALSE,...)
     # test for negative subscripting in i
     if (is.numeric(i)) {
       #if(any(i < 0)) {
-      if(.Call("any_negative", i, PACKAGE="xts")) {
+      if(.Call(C_any_negative, i)) {
         if(!all(i <= 0))
           stop('only zeros may be mixed with negative subscripts')
         i <- (1:nr)[i]
@@ -144,10 +152,19 @@ function(x, i, j, drop = FALSE, which.i=FALSE,...)
       i <- which(i) #(1:NROW(x))[rep(i,length.out=NROW(x))]
     } else
     if (is.character(i)) {
-      if(length(i) == 1 && !identical(integer(),grep("^T.*?/T",i[1]))) {
-        # is i of the format T/T?
+      time.of.day.pattern <- "(^/T)|(^T.*?/T)|(^T.*/$)"
+      if (length(i) == 1 && !identical(integer(), grep(time.of.day.pattern, i[1]))) {
+        # time of day subsetting
         ii <- gsub("T", "", i, fixed = TRUE)
         ii <- strsplit(ii, "/", fixed = TRUE)[[1L]]
+
+        if (length(ii) == 1) {
+          # i is right open ended (T.*/)
+          ii <- c(ii, "23:59:59.999999999")
+        } else if (nchar(ii[1L]) == 0) {
+          # i is left open ended (/T)
+          ii[1L] <- "00:00:00.000000000"
+        } # else i is bounded on both sides (T.*/T.*)
         i <- .subsetTimeOfDay(x, ii[1L], ii[2L])
       } else {
         # enables subsetting by date style strings
@@ -200,15 +217,15 @@ function(x, i, j, drop = FALSE, which.i=FALSE,...)
         return(x.tmp)
       } else {
         if(USE_EXTRACT) {
-          return(.Call('extract_col', 
+          return(.Call(C_extract_col,
                        x, as.integer(1:nc),
                        drop,
-                       as.integer(i[1]), as.integer(i[length(i)]), PACKAGE="xts"))
+                       as.integer(i[1]), as.integer(i[length(i)])))
         } else {
-          return(.Call('_do_subset_xts', 
+          return(.Call(C__do_subset_xts,
                        x, as.integer(i),
                        as.integer(1:nc), 
-                       drop, PACKAGE='xts'))
+                       drop))
         }
       }
     } else
@@ -250,14 +267,14 @@ function(x, i, j, drop = FALSE, which.i=FALSE,...)
       return(output)
     } 
     if(missing(i))
-      return(.Call("extract_col", x, as.integer(j), drop, 1, nr, PACKAGE='xts'))
+      return(.Call(C_extract_col, x, as.integer(j), drop, 1, nr))
     if(USE_EXTRACT) {
-          return(.Call('extract_col', 
+          return(.Call(C_extract_col,
                        x, as.integer(j),
                        drop,
-                       as.integer(i[1]), as.integer(i[length(i)]), PACKAGE='xts'))
+                       as.integer(i[1]), as.integer(i[length(i)])))
     } else
-    return(.Call('_do_subset_xts', x, as.integer(i), as.integer(j), drop, PACKAGE='xts'))
+    return(.Call(C__do_subset_xts, x, as.integer(i), as.integer(j), drop))
 }
 
 # Replacement method for xts objects
@@ -367,7 +384,7 @@ window_idx <- function(x, index. = NULL, start = NULL, end = NULL)
     # We get back upper bound of index as per findInterval
     tmp <- base_idx[firstlast]
 
-    res <- .Call("fill_window_dups_rev", tmp, .index(x), PACKAGE = "xts")
+    res <- .Call(C_fill_window_dups_rev, tmp, .index(x))
     firstlast <- rev(res)
   }
 
@@ -388,10 +405,10 @@ window.xts <- function(x, index. = NULL, start = NULL, end = NULL, ...)
 
   firstlast <- window_idx(x, index., start, end) # firstlast may be NULL
 
-  .Call('_do_subset_xts',
+  .Call(C__do_subset_xts,
      x, as.integer(firstlast),
      seq.int(1, ncol(x)),
-     drop = FALSE, PACKAGE='xts')
+     drop = FALSE)
 }
 
 # Declare binsearch to call the routine in binsearch.c
@@ -400,7 +417,7 @@ binsearch <- function(key, vec, start=TRUE) {
   if (storage.mode(key) != storage.mode(vec)) {
     storage.mode(key) <- storage.mode(vec) <- "double"
   }
-  .Call("binsearch", key, vec, start, PACKAGE='xts')
+  .Call(C_binsearch, key, vec, start)
 }
 
 # Unit tests for the above code may be found in runit.xts.methods.R

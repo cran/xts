@@ -1,28 +1,28 @@
 Package: xts
 Type: Package
 Title: eXtensible Time Series
-Version: 0.12.2
+Version: 0.13.0
 Authors@R: c(
   person(given=c("Jeffrey","A."), family="Ryan", role=c("aut","cph")),
   person(given=c("Joshua","M."), family="Ulrich", role=c("cre","aut"), email="josh.m.ulrich@gmail.com"),
   person(given="Ross", family="Bennett", role="ctb"),
   person(given="Corwin", family="Joy", role="ctb")
   )
-Depends: zoo (>= 1.7-12)
+Depends: R (>= 3.6.0), zoo (>= 1.7-12)
 Imports: methods
 LinkingTo: zoo
-Suggests: timeSeries, timeDate, tseries, chron, tis, RUnit
+Suggests: timeSeries, timeDate, tseries, chron, tis, tinytest
 LazyLoad: yes
 Description: Provide for uniform handling of R's different time-based data classes by extending zoo, maximizing native format information preservation and allowing for user level customization and extension, while simplifying cross-class interoperability.
 License: GPL (>= 2)
 URL: https://github.com/joshuaulrich/xts
 BugReports: https://github.com/joshuaulrich/xts/issues
 NeedsCompilation: yes
-Packaged: 2022-10-12 16:08:19 UTC; josh
+Packaged: 2023-02-20 22:10:33 UTC; josh
 Author: Jeffrey A. Ryan [aut, cph],
   Joshua M. Ulrich [cre, aut],
   Ross Bennett [ctb],
   Corwin Joy [ctb]
 Maintainer: Joshua M. Ulrich <josh.m.ulrich@gmail.com>
 Repository: CRAN
-Date/Publication: 2022-10-16 00:20:02 UTC
+Date/Publication: 2023-02-20 23:40:02 UTC
