@@ -75,19 +75,31 @@ function(x, ...)
 
   # For xts objects created pre-0.10.3
   if (is.null(tzone)) {
-    if (isTRUE(getOption("xts.warn.index.missing.tzone", FALSE))) {
-      warning("index does not have a ", sQuote("tzone"), " attribute")
-    }
+    # no tzone on the index
+    sq_tzone <- sQuote("tozne")
+    sq_both <- paste(sq_tzone, "or", sQuote(".indexTZ"))
+
+    warn_msg <-
+      paste0("index does not have a ", sq_tzone, " attribute")
 
     tzone <- attr(x, "tzone")
     if (is.null(tzone)) {
+      # no tzone on the xts object, look for .indexTZ
       tzone <- attr(x, ".indexTZ")
     }
+
     if (is.null(tzone)) {
-      warning("object does not have a ", sQuote("tzone"), " or ",
-              sQuote(".indexTZ"), " attribute")
+      # no .indexTZ on the xts object
       tzone <- ""
+      warn_msg <- paste0(warn_msg, "\n  and xts object does not have a ",
+                         sq_both, " attribute\n", "  returning ", dQuote(tzone))
+      warning(warn_msg)
+      return(tzone)
     }
+
+    sym <- deparse(substitute(x))
+    warning(warn_msg, "\n use ", sym,
+            " <- xts:::.update_index_attributes(", sym, ") to update the object")
   }
   return(tzone)
 }
@@ -118,12 +130,13 @@ check.TZ <- function(x, ...)
   }
 
   x_tz <- tzone(x)
+  x_tclass <- tclass(x)
 
-  if (any(tclass(x) %in% .classesWithoutTZ)) {
+  if (any(x_tclass %in% .classesWithoutTZ)) {
     # warn if tzone is not UTC or GMT (GMT is not technically correct, since
     # it *is* a timezone, but it should work for all practical purposes)
     if (!isUTC(x_tz)) {
-      warning(paste0("object index class (", paste(tclass(x), collapse = ", "),
+      warning(paste0("object index class (", paste(x_tclass, collapse = ", "),
         ") does not support timezones.\nExpected 'UTC' timezone, but tzone is ",
         sQuote(x_tz)), call. = FALSE)
     } else {
@@ -134,7 +147,7 @@ check.TZ <- function(x, ...)
   x_tz_str <- as.character(x_tz)
   sys_tz <- Sys.getenv("TZ")
 
-  if (!is.null(tzone(x)) && x_tz_str != "" && !identical(sys_tz, x_tz_str)) {
+  if (!is.null(x_tz) && x_tz_str != "" && !identical(sys_tz, x_tz_str)) {
     msg <- paste0("object timezone (", x_tz, ") is different ",
                   "from system timezone (", sys_tz, ")")
 

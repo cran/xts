@@ -75,18 +75,24 @@ print.xts <-
     seq.col <- seq_len(nc)
     seq.n <- (nr - show.rows + 1):nr
 
-    index <- as.character(index(x))
-    index <- c(index[seq.row], "...", index[seq.n])
+    index <- c(as.character(index(x)[seq.row]),
+               "...",
+               as.character(index(x)[seq.n]))
 
     # as.matrix() to ensure we have dims
     # unclass() avoids as.matrix() method dispatch
     m <- as.matrix(unclass(x))
 
-    y <- rbind(
-      format(m[seq.row, seq.col, drop = FALSE]),
-      format(matrix(rep("", nc), nrow = 1)),
-      format(m[seq.n, seq.col, drop = FALSE])
-    )
+    # convert to data.frame to format each column individually
+    m <- data.frame(m[c(seq.row, seq.n), seq.col, drop = FALSE])
+    m[] <- lapply(m, format)
+    m <- as.matrix(m)
+
+    # insert blank row between top and bottom rows
+    y <- rbind(utils::head(m, show.rows),
+               rep("", nc),
+               utils::tail(m, show.rows))
+
     rownames(y) <- format(index, justify = "right")
     colnames(y) <- colnames(m[, seq.col, drop = FALSE])
   } else {
@@ -116,23 +122,9 @@ print.xts <-
       y_names <- as.character(index(x))
       y <- matrix(y, nrow = length(y), dimnames = list(y_names, NULL))
     }
-    # Create column names as right-justified column indexes. They're left-
-    # justified by default, which is different than if there are column names.
+    # Create column names as column indexes.
     if (is.null(colnames(y))) {
-      cindex <- utils::capture.output(print(y[1,,drop = FALSE]))[1]
-      cindex <- sub("\\s+$", "", cindex)  # remove trailing spaces
-
-      # remove the leading spaces caused by the index,
-      # (plus the space between the index and the first column)
-      max_nchar <- max(nchar(rownames(y))) + 1
-      cindex <- substr(cindex, max_nchar, nchar(cindex))
-
-      # split string into vector for each column
-      cindex <- paste0(strsplit(cindex, "]")[[1]], "]")
-      # remove leading space
-      cindex <- sub("^\\s", "", cindex)
-
-      colnames(y) <- cindex
+      colnames(y) <- paste0("[,", seq_len(ncol(y)), "]")
     }
 
     print(y, quote = quote, right = right, ...)

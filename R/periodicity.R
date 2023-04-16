@@ -18,7 +18,7 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-time.frequency <- function(x) {
+time_frequency <- function(x) {
   x <- gsub(":|/|-| ", "", x)
   nc <- nchar(x)
   if(nc < 4) stop("unrecognizable time.scale")
@@ -32,8 +32,16 @@ time.frequency <- function(x) {
 }
 
 periodicity <- function(x, ...) {
-  if( timeBased(x) || !is.xts(x) )
-    x <- try.xts(x, error='\'x\' needs to be timeBased or xtsible')
+  if( timeBased(x) ) {
+    if( anyNA(x) ) {
+      warning("removing NA in 'x' to calculate periodicity")
+      x <- x[!is.na(x)]
+    }
+    x <- try.xts(x, error = "cannot convert 'x' to xts")
+  }
+  if (!is.xts(x)) {
+    x <- try.xts(x, error = "cannot convert 'x' to xts")
+  }
 
   n <- length(.index(x))
   if( n < 2 ) {

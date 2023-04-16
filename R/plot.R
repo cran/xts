@@ -21,6 +21,74 @@
 
 current.xts_chob <- function() invisible(get(".xts_chob",.plotxtsEnv))
 
+
+# * A plot window contains multiple panels
+# * There are 2 frames per panel
+#   * The first frame is a small 'header' frame for titles
+#   * The second frame is larger and where the data series is rendered, including
+#     axis labels
+#
+# The first panel is where the main series is rendered. Panels added later are
+# plotted below the first panel and are smaller.
+#
+#
+# add_frame(n) adds a new frame after frame 'n'
+#
+# What does 'clip' do?
+#
+#   ____________________________________________________________________________
+#  /                                                                            \
+# |   plot window                                                                |
+# |                                                                              |
+# |    ______________________________________________________________________    |
+# |   /                                                                      \   |
+# |  |   panel #1                                                             |  |
+# |  |   __________________________________________________________________   |  |
+# |  |  /                                                                  \  |  |
+# |  | |  header frame                                                      | |  |
+# |  |  \__________________________________________________________________/  |  |
+# |  |   __________________________________________________________________   |  |
+# |  |  /                                                                  \  |  |
+# |  | |  series frame                                                      | |  |
+# |  | |                                                                    | |  |
+# |  | |                                                                    | |  |
+# |  | |                                                                    | |  |
+# |  | |                                                                    | |  |
+# |  | |                                                                    | |  |
+# |  | |                                                                    | |  |
+# |  | |                                                                    | |  |
+# |  | |                                                                    | |  |
+# |  | |                                                                    | |  |
+# |  | |                                                                    | |  |
+# |  | |                                                                    | |  |
+# |  | |                                                                    | |  |
+# |  | |                                                                    | |  |
+# |  | |                                                                    | |  |
+# |  | |                                                                    | |  |
+# |  |  \__________________________________________________________________/  |  |
+# |   \______________________________________________________________________/   |
+# |                                                                              |
+# |    ______________________________________________________________________    |
+# |   /                                                                      \   |
+# |  |   panel #2                                                             |  |
+# |  |   __________________________________________________________________   |  |
+# |  |  /                                                                  \  |  |
+# |  | |  header frame                                                      | |  |
+# |  |  \__________________________________________________________________/  |  |
+# |  |   __________________________________________________________________   |  |
+# |  |  /                                                                  \  |  |
+# |  | |  series frame                                                      | |  |
+# |  | |                                                                    | |  |
+# |  | |                                                                    | |  |
+# |  | |                                                                    | |  |
+# |  | |                                                                    | |  |
+# |  |  \__________________________________________________________________/  |  |
+# |   \______________________________________________________________________/   |
+# |                                                                              |
+#  \____________________________________________________________________________/
+#
+
+
 # Currently not necessary, but potentially very useful:
 # http://www.fromthebottomoftheheap.net/2011/07/23/passing-non-graphical-parameters-to-graphical-functions-using/
 chart.lines <- function(x, 
@@ -1413,8 +1481,8 @@ new.replot_xts <- function(frame=1,asp=1,xlim=c(1,10),ylim=list(structure(c(1,10
   return(replot_env)
 }
 
-str.replot_xts <- function(x, ...) {
-  print(str(unclass(x)))
+str.replot_xts <- function(object, ...) {
+  print(str(unclass(object)))
 }
 
 print.replot_xts <- function(x, ...) plot(x,...)

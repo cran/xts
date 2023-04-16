@@ -37,25 +37,37 @@ function(x, ...)
 }
 
 tclass.xts <-
-function(x, ...) {
+function(x, ...)
+{
   tclass <- attr(attr(x, "index"), "tclass")
 
   # For xts objects created pre-0.10.3
   if (is.null(tclass)) {
-    if (isTRUE(getOption("xts.warn.index.missing.tclass", FALSE))) {
-      warning("index does not have a ", sQuote("tclass"), " attribute")
-    }
+    # no tclass on the index
+    sq_tclass <- sQuote("tclass")
+    sq_both <- paste(sq_tclass, "or", sQuote(".indexCLASS"))
+
+    warn_msg <-
+      paste0("index does not have a ", sq_tclass, " attribute")
 
     tclass <- attr(x, "tclass")
     if (is.null(tclass)) {
+      # no tclass on the xts object, look for .indexCLASS
       tclass <- attr(x, ".indexCLASS")
     }
+
     if (is.null(tclass)) {
-      warning("object does not have a ", sQuote("tclass"), " or ",
-              sQuote(".indexCLASS"), " attribute")
-      tclass <- ""
+      # no .indexCLASS on the xts object
+      tc <- c("POSIXct", "POSIXt")
+      warn_msg <- paste0(warn_msg, "\n  and xts object does not have a ",
+                         sq_both, " attribute\n", "  returning ", dQuote(tc))
+      warning(warn_msg)
+      return(tc)
     }
-    tclass
+
+    sym <- deparse(substitute(x))
+    warning(warn_msg, "\n use ", sym,
+            " <- xts:::.update_index_attributes(", sym, ") to update the object")
   }
   return(tclass)
 }
