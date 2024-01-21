@@ -119,10 +119,16 @@ function(x, value) {
 
   # all index related meta-data will be stored in the index
   # as attributes
-  if(any(value %in% .classesWithoutTZ)) {
+  if(isClassWithoutTZ(value)) {
     attr(attr(x,'index'), 'tzone') <- 'UTC'
   }
   attr(attr(x,'index'), 'tclass') <- value
+
+  x_has_tz <- !isClassWithoutTZ(x)
+  if(x_has_tz && isClassWithoutTZ(value)) {
+    # update index values to midnight UTC (this also changes the tzone)
+    index(x) <- index(x)
+  }
 
   # Remove class attrs (object created before 0.10-3)
   attr(x, ".indexCLASS") <- NULL

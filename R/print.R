@@ -30,6 +30,8 @@ print.xts <-
   nr <- NROW(x)
   nc <- NCOL(x)
 
+  dots <- list(...)
+
   if (missing(max.rows)) {
     # the user didn't specify a value; use the global option value if it's
     # set; if it's not set, use the default value
@@ -43,9 +45,8 @@ print.xts <-
       show.rows <- 0
     } else {
       # convert 'max' to 'show.rows'
-      max.arg <- match.call()$max
-      if (!is.null(max.arg)) {
-        show.rows <- trunc(max.arg / nc)
+      if (!is.null(dots$max)) {
+        show.rows <- trunc(dots$max / nc)
       }
     }
   } else if (missing(show.rows)) {
@@ -62,10 +63,10 @@ print.xts <-
   }
 
   if (!hasArg("quote")) {
-    quote <- FALSE
+    dots$quote <- FALSE
   }
   if (!hasArg("right")) {
-    right <- TRUE
+    dots$right <- TRUE
   }
 
   if (nr > max.rows && nr > 2 * show.rows) {
@@ -75,9 +76,11 @@ print.xts <-
     seq.col <- seq_len(nc)
     seq.n <- (nr - show.rows + 1):nr
 
-    index <- c(as.character(index(x)[seq.row]),
-               "...",
-               as.character(index(x)[seq.n]))
+    # format all the index values that will be printed,
+    # so every row will have the same number of characters
+    index <- format(index(x)[c(seq.row, seq.n)])
+    # combine the index values with the '...' separator
+    index <- c(index[seq.row], "...", index[-c(seq.row, tail(seq.row, 1))])
 
     # as.matrix() to ensure we have dims
     # unclass() avoids as.matrix() method dispatch
@@ -127,7 +130,7 @@ print.xts <-
       colnames(y) <- paste0("[,", seq_len(ncol(y)), "]")
     }
 
-    print(y, quote = quote, right = right, ...)
+    do.call("print", c(list(y), dots))
   }
 
   invisible(x)

@@ -104,7 +104,19 @@ function(x, ...)
   return(tzone)
 }
 
-.classesWithoutTZ <- c("chron","dates","times","Date","yearmon","yearqtr")
+isClassWithoutTZ <-
+function(tclass, object = NULL)
+{
+  .classesWithoutTZ <- c("chron","dates","times","Date","yearmon","yearqtr")
+  has_no_tz <- FALSE
+
+  if (is.null(object)) {
+    has_no_tz <- any(tclass %in% .classesWithoutTZ)
+  } else {
+    has_no_tz <- inherits(object, .classesWithoutTZ)
+  }
+  return(has_no_tz)
+}
 
 isUTC <- function(tz = NULL) {
   if (is.null(tz)) {
@@ -132,7 +144,7 @@ check.TZ <- function(x, ...)
   x_tz <- tzone(x)
   x_tclass <- tclass(x)
 
-  if (any(x_tclass %in% .classesWithoutTZ)) {
+  if (isClassWithoutTZ(x_tclass)) {
     # warn if tzone is not UTC or GMT (GMT is not technically correct, since
     # it *is* a timezone, but it should work for all practical purposes)
     if (!isUTC(x_tz)) {
@@ -148,13 +160,13 @@ check.TZ <- function(x, ...)
   sys_tz <- Sys.getenv("TZ")
 
   if (!is.null(x_tz) && x_tz_str != "" && !identical(sys_tz, x_tz_str)) {
-    msg <- paste0("object timezone (", x_tz, ") is different ",
-                  "from system timezone (", sys_tz, ")")
+    msg <- paste0("object timezone ('", x_tz, "') is different ",
+                  "from system timezone ('", sys_tz, "')")
 
     if (is.null(check)) {
       # xts_check_TZ is NULL by default
       # set to TRUE after messaging user how to disable the warning
-      msg <- paste0(msg, "\n  NOTE: set 'options(xts_check_TZ = FALSE)'",
+      msg <- paste0(msg, "\n  NOTE: set 'options(xts_check_TZ = FALSE)' ",
                     "to disable this warning\n",
                     "    This note is displayed once per session")
       options(xts_check_TZ = TRUE)

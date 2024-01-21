@@ -67,15 +67,15 @@ sprintf("%20.10f", dt)
 ###################################################
 sample.xts <- xts(1:50, seq(as.POSIXct("1970-01-01"),
   as.POSIXct("1970-01-03")-1, length=50))
-apply.daily(sample.xts, mean)
-period.apply(sample.xts, endpoints(sample.xts, "days"), mean)
-period.apply(sample.xts, endpoints(sample.xts, "hours", 6), mean)
+apply.daily(sample.xts, colMeans)
+period.apply(sample.xts, endpoints(sample.xts, "days"), colMeans)
+period.apply(sample.xts, endpoints(sample.xts, "hours", 6), colMeans)
 
 
 ###################################################
 ### code chunk number 11: xts-faq.Rnw:185-186 (eval = FALSE)
 ###################################################
-## apply.daily(sample.xts['T06:00/T17:00',], mean)
+## apply.daily(sample.xts['T06:00/T17:00',], colMeans)
 
 
 ###################################################
