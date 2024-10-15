@@ -57,7 +57,7 @@ indexTZ <- function(x, ...)
 #' 
 #' @author Jeffrey A. Ryan
 #' 
-#' @seealso [`index()`] has more information on the xts index, [`tformat()`]
+#' @seealso [`index()`][xts::index.xts] has more information on the xts index, [`tformat()`]
 #' describes how the index values are formatted when printed, and [`tclass()`]
 #' provides details how \pkg{xts} handles the class of the index.
 #' 
@@ -148,7 +148,7 @@ function(x, ...)
   # For xts objects created pre-0.10.3
   if (is.null(tzone)) {
     # no tzone on the index
-    sq_tzone <- sQuote("tozne")
+    sq_tzone <- sQuote("tzone")
     sq_both <- paste(sq_tzone, "or", sQuote(".indexTZ"))
 
     warn_msg <-

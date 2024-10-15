@@ -51,7 +51,7 @@ objects passed in to be merged.
 Perform merge operations on xts objects by time index.
 }
 \details{
-This xts method is compatible with \code{\link[=merge.zoo]{merge.zoo()}} but implemented almost
+This xts method is compatible with \link[zoo:merge.zoo]{zoo's merge() method} but implemented almost
 entirely in C-level code for efficiency.
 
 The function can perform all common database join operations along the time
@@ -110,7 +110,7 @@ merge(y, xi)
 }
 \references{
 Merge Join Discussion:
-\url{https://blogs.msdn.microsoft.com/craigfr/2006/08/03/merge-join/}
+\url{https://learn.microsoft.com/en-us/archive/blogs/craigfr/merge-join}
 }
 \author{
 Jeffrey A. Ryan
