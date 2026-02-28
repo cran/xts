@@ -1,4 +1,24 @@
-# xts 0.14.x (202x-xx-xx)
+# xts 0.14.2 (2026-02-02)
+
+* Removed `ATTRIB()` and `SET_ATTRIB()` from C code, since they are not part
+  of the public R API.
+  ([#436](https://github.com/joshuaulrich/xts/issues/436))
+
+* Fixed crash when `endpoints()` was called on an xts object with a zero-length
+  index (e.g. `endpoints(xts())`).
+  ([#434](https://github.com/joshuaulrich/xts/issues/434))
+
+* `rollapply.xts()` now supports a numeric vector `width` argument the same way
+  as `rollapply.zoo()`. Thanks to James Hirschorn (@quantitative-technologies)
+  for the report, and to @npschweizer for the nudge to fix.
+  ([#290](https://github.com/joshuaulrich/xts/issues/290))
+
+* More efficient leap-year identification in the `do_startofyear()` C function.
+  Thanks to Michael Chirico for the report and patch.
+  ([#429](https://github.com/joshuaulrich/xts/issues/429))
+  ([#430](https://github.com/joshuaulrich/xts/issues/430))
+
+# xts 0.14.1 (2024-10-15)
 
 * `plot.xts()` now renders all panels when 'x' has more than 8 columns and
   `multi.panel = TRUE`. Columns 9 and later didn't render because the default
